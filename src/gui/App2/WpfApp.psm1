@@ -1,0 +1,4 @@
+// 
+Function WpfApp {
+    Situation = 
+}
