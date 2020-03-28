@@ -1,5 +1,5 @@
 import-module ./ComponentFactory.psm1
-$ErrorActionPreference = "Inquire"
+$ErrorActionPreference = "Stop"
 
 function Write-Callstack([System.Management.Automation.ErrorRecord]$ErrorRecord=$null, [int]$Skip=1)
 {
@@ -43,12 +43,26 @@ Describe "ComponentFactoryWpf" {
             WindowStartupLocation="CenterScreen"
             MaxHeight="600">
                 <StackPanel>
-                    <Button Name="_button1">Stuff and Things</Button>
-                    <_Framework_SomeComponent1>asdf</_Framework_SomeComponent1>
+                    <Button Name="button1">Stuff and Things</Button>
+                    <_Framework_SomeComponent1 />
                     <_Framework_SomeComponent2 />
                 </StackPanel>
             </Window>
 "@
+
+            $Component.Children["_Framework_SomeComponent1"] = @{
+                Xaml = ([xml]'<Button xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">SomeComponent1</Button>');
+            }
+
+            $Component.Children["_Framework_SomeComponent2"] = @{
+                Xaml = ([xml]'<Button xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">SomeComponent2</Button>');
+            }
+
+        # $Component.Xaml = [xml]'<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Name="Window" Title="Available Actions" SizeToContent="WidthAndHeight" ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen" MaxHeight="600"><StackPanel><Button Name="button1">Stuff and Things</Button><Button xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">SomeComponent1</Button><Button xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">SomeComponent1</Button></StackPanel></Window>'
+
+
+# <_Framework_SomeComponent1>asdf</_Framework_SomeComponent1>
+# <_Framework_SomeComponent2 />
 
             # $Component.Init {
             #     $Component.children._button1.wpf.AddClick({
@@ -57,18 +71,10 @@ Describe "ComponentFactoryWpf" {
             # }
         })
 
-        try {
-            $window1 = $factory.NewComponent("Window1")
-            $window1.wpf.ShowDialog()
-        } catch {
-            write-host "error:"
-            write-host ($_.InvocationInfo | out-string)
-            write-host $Error
-            # Write-Callstack $_
-            write-host $_.ScriptStackTrace
-            Write-Host ($_.InvocationInfo | Format-List -Force | Out-String) -ErrorAction Continue
-            throw $_
-        }
-        
+        $window1 = $factory.NewComponent("Window1")
+        $factory._InitWpf($window1)
+        write-host "Window WPF: $($window1.Wpf)"
+        $window1.Wpf.ShowDialog()
+
     }
 }
