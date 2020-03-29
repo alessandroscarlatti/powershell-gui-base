@@ -41,17 +41,39 @@ Function New-ComponentFactory($Id = "default") {
         function NewComponent([string] $Name, $Props) {
             _Log "Creating component with $Name and props: $($Props | out-string)"
 
+            #Initialize an empty component
             $Component = @{}
+            $Component.Name = $Name
             $Component.Props = $Props
             $Component.Children = @{}
+            $Component._ComponentFactory = $this
 
+            #Define a method for users to call when creating a component
+            $Component | Add-Member -Name NewXamlComponent -Type ScriptMethod -Value {
+                param([string] $Type, $Props)
+
+                #TODO this should handle IDs, not assuming type = id
+                $newComponent = $this._ComponentFactory.NewComponent($Type, $Props)
+
+                #TODO this should perhaps add to a "global" children?
+                $this.Children[$Type] = $newComponent
+
+                return $newComponent.GetXamlPlaceholder()
+            }
+
+            $Component | Add-Member -Name GetXamlPlaceholder -Type ScriptMethod -Value { "<$($this.Name) />" }
+            $Component | Add-Member -Name ToString -Type ScriptMethod -Force -Value { "<$($this.Name) />" }
+
+            #Call the initializer for this component
             &$_ComponentsScriptMap[$Name] $Component
 
+            #After calling initializer, expect:
+            #Component.Xaml is initialized.
             return $Component
         }
 
         function _InitWpf($Component) {
-            # try {
+            try {
                 _Log "Initializing Component $Component"
                 _Log "Component XAML (pre-init): $($Component.Xaml.OuterXml)"
     
@@ -61,9 +83,6 @@ Function New-ComponentFactory($Id = "default") {
                     $childComponentXaml = $Component.Children[$_].Xaml
                     _ReplaceXmlNode $Component.Xaml "//*[local-name() = '$childComponentName']" $childComponentXaml
                 }
-
-                # _ReplaceXmlNode $Component.Xaml "//*[local-name() = '_Framework_SomeComponent1']" ([xml]'<Button xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">SomeComponent1</Button>')
-                # _ReplaceXmlNode $Component.Xaml "//*[local-name() = '_Framework_SomeComponent2']" ([xml]'<Button xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">SomeComponent2</Button>')
     
                 #Load XAML
                 _Log "Component XAML (post-init): $($Component.Xaml.OuterXml)"
@@ -71,11 +90,48 @@ Function New-ComponentFactory($Id = "default") {
 
                 _Log "Component WPF: $($Component.Wpf)"
 
-            #Assign WPC child component variables
-            # $Xaml.SelectNodes("//*[@Name]") | % {
-            #     _Log "Adding child WPF Component: $($_.Name)"
-            #     $Component[$_.Name] = $Component.Wpf.FindName($_.Name)
-            # }
+                #Assign WPC child component variables
+                $Component.Xaml.SelectNodes("//*[@Name]") | % {
+                    _Log "Considering WPF Component: $($_.Name)"
+                    if ($Component.Children[$_.Name]) {
+                        _Log "Adding child WPF Component: $($_.Name)"
+                        $Component.Children[$_.Name].Wpf = $Component.Wpf.FindName($_.Name)
+                    } else {
+                        _Log "Not adding child WPF Component: $($_.Name)"
+                    }
+                }
+
+                #Call init function
+                write-host "Asdf"
+                _InitRecursive($Component)
+
+                Write-host "Children: $($Component.Children | out-string)"
+            } catch {
+                _Log "Error initializing WPF component: $($_ | out-string)"
+                throw $_
+            }
+        }
+
+        Function _InitRecursive($Component) {
+            try {
+                _Log "Initializing component: $($Component.Name)"
+                if ($Component.Init) {
+                    &$Component.Init
+                }
+
+                #Initialize children
+                _Log("Children: $($Component.Children | out-string)")
+                $Component.Children.Keys | % {
+                    _Log("Considering child component $($_)")
+                    if ($_) {
+                        _Log("Initializing child component $($_.Name)")
+                        $this._InitRecursive($Component.Children[$_])
+                    }
+                }
+            } catch {
+                _Log "Error initializing component: $($Component.Name) $($_ | out-string)"
+                throw $_
+            }
         }
 
         Function _ReplaceXmlNode([xml] $xml, $xpath, [xml] $newXml) {

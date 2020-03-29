@@ -1,74 +1,64 @@
 import-module ./ComponentFactory.psm1
 $ErrorActionPreference = "Stop"
 
-function Write-Callstack([System.Management.Automation.ErrorRecord]$ErrorRecord=$null, [int]$Skip=1)
-{
-    Write-Host # blank line
-    if ($ErrorRecord)
-    {
-        Write-Host -ForegroundColor Red "$ErrorRecord $($ErrorRecord.InvocationInfo.PositionMessage)"
-
-        if ($ErrorRecord.Exception)
-        {
-            Write-Host -ForegroundColor Red $ErrorRecord.Exception
-        }
-
-        if ((Get-Member -InputObject $ErrorRecord -Name ScriptStackTrace) -ne $null)
-        {
-            #PS 3.0 has a stack trace on the ErrorRecord; if we have it, use it & skip the manual stack trace below
-            Write-Host -ForegroundColor Red $ErrorRecord.ScriptStackTrace
-            return
-        }
-    }
-
-    Get-PSCallStack | Select -Skip $Skip | % {
-        Write-Host -ForegroundColor Yellow -NoNewLine "! "
-        Write-Host -ForegroundColor Red $_.Command $_.Location $(if ($_.Arguments.Length -le 80) { $_.Arguments })
-    }
-}
-
 Describe "ComponentFactoryWpf" {
     It "ShowDialog" {
         $factory = New-ComponentFactory
+
+        $factory.DefineComponent("Button1", {
+            param($this)
+            $this.Xaml = ([xml]'<Button xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">SomeComponent1.1</Button>');
+
+            $this.Init = {
+                $this.Wfp.AddClick({
+                    write-host "SomeComponent1.1 clicked"
+                })
+            }.GetNewClosure()
+        })
+
+        $factory.DefineComponent("Button2", {
+            param($this)
+            $this.Xaml = ([xml]'<Button xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">SomeComponent2.1</Button>');
+
+            $this.Init = {
+                $this.Wfp.AddClick({
+                    write-host "SomeComponent2.1 clicked"
+                })
+            }.GetNewClosure()
+        })
+
         $factory.DefineComponent("Window1", {
-            param($Component)
-            $id = $Component.Id
-            $Component.Xaml = [xml]@"
+            param($this, $Factory, $Id)
+
+            $this.Xaml = [xml]@"
             <Window
-            xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-            Name="Window"
-            Title="Available Actions"
-            SizeToContent="WidthAndHeight"
-            ResizeMode="CanMinimize"
-            WindowStartupLocation="CenterScreen"
-            MaxHeight="600">
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                Name="Window1"
+                Title="Available Actions"
+                SizeToContent="WidthAndHeight"
+                ResizeMode="CanMinimize"
+                WindowStartupLocation="CenterScreen"
+                MaxHeight="600">
                 <StackPanel>
-                    <Button Name="button1">Stuff and Things</Button>
-                    <_Framework_SomeComponent1 />
-                    <_Framework_SomeComponent2 />
+                    <Button Name="someButton0">Stuff and Things</Button>
+                    $($this.NewXamlComponent("Button1"))
+                    $($this.NewXamlComponent("Button2"))
                 </StackPanel>
             </Window>
 "@
+            $this.Init = {
+                # $this.Children.this.AddClick({
+                #     write-host "clicked"
+                # })
 
-            $Component.Children["_Framework_SomeComponent1"] = @{
-                Xaml = ([xml]'<Button xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">SomeComponent1</Button>');
-            }
+                # $this.Wfp.someButton1.AddClick({
+                #     write-host "clicked"
+                # })
 
-            $Component.Children["_Framework_SomeComponent2"] = @{
-                Xaml = ([xml]'<Button xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">SomeComponent2</Button>');
-            }
-
-        # $Component.Xaml = [xml]'<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Name="Window" Title="Available Actions" SizeToContent="WidthAndHeight" ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen" MaxHeight="600"><StackPanel><Button Name="button1">Stuff and Things</Button><Button xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">SomeComponent1</Button><Button xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">SomeComponent1</Button></StackPanel></Window>'
-
-
-# <_Framework_SomeComponent1>asdf</_Framework_SomeComponent1>
-# <_Framework_SomeComponent2 />
-
-            # $Component.Init {
-            #     $Component.children._button1.wpf.AddClick({
-            #         write-host "clicked"
-            #     })
-            # }
+                # $this.Wfp.button1.AddClick({
+                #     write-host "clicked"
+                # })
+            }.GetNewClosure()
         })
 
         $window1 = $factory.NewComponent("Window1")
