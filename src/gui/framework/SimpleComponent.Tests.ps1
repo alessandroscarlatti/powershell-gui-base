@@ -4,18 +4,7 @@ import-module ./Test.Module1.psm1
 Describe "SimpleComponent" {
     It "Creates top level component" {
         $window = Render {
-            Xaml({
-                [xml]@"
-                <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
-                    <StackPanel>
-                        <Button Name="button1">Button1 $(Get-String)</Button>
-                        <Button Name="button2">Button2 $(Get-String)</Button>
-                    </StackPanel>
-                </Window>
-"@
-            })
-
-            $this.Init({
+            Init({
                 $this.refs.Button1.Add_Click({
                     write-host "clicked button 1"
                 })
@@ -26,6 +15,15 @@ Describe "SimpleComponent" {
 
                 write-host "Init is running with props $($this.props | out-string)"
             })
+
+@"
+            <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+                <StackPanel>
+                    <Button Name="button1">Button1 $(Get-String)</Button>
+                    <Button Name="button2">Button2 $(Get-String)</Button>
+                </StackPanel>
+            </Window>
+"@
         }
 
         $window.ShowDialog()
@@ -35,46 +33,42 @@ Describe "SimpleComponent" {
 Describe "NestedComponent" {
     It "Creates nested component" {
         $Button1 = {
-            Xaml({[xml]@"
-                    <Button $($this.xmlns)>Add another button $(Get-String)</Button>
-"@
-            })
-            
             Init({
                 $this.refs.this.Add_Click($this.props.Click)
             })
+
+            "<Button $($this.xmlns)>Add another button $(Get-String)</Button>"
         }
 
         $global:Button2 = {
-            Xaml({
-                [xml]"<Button $($this.xmlns)>Another button $($this.props.id)</Button>"
-            })
-
             Init({
                 $this.refs.this.Add_Click({
                     write-host "clicked button $($script:this.props.id)"
                 }.GetNewClosure())
             })
+@"
+                <Button $($this.xmlns)>Another button $($this.props.id)</Button>
+"@
         }
 
         $window = Render {
             $this.vars.id = 23
-            $this.vars.click = {
+            $this.vars.AddButton = {
                 write-host "add another button."
                 write-host "stack panel: $($script:this.refs.stackPanel)"
 
-                $script:this.refs.stackPanel.Children.Add((Render $global:Button2 @{ id = $script:this.vars.id++}))
+                $newButton = Render $global:Button2 @{ id = $script:this.vars.id++}
+                $script:this.refs.stackPanel.Children.Add($newButton)
             }.GetNewClosure()
 
-            Xaml({[xml]@"
-                <Window $($this.xmlns)>
-                    <StackPanel Name="stackPanel">
-                        $($this.AddChild($Button1, @{Click = $this.vars.click}))
-                        <Button Name="button2">Button2 $(Get-String)</Button>
-                    </StackPanel>
-                </Window>
+@"
+            <Window $($this.xmlns)>
+                <StackPanel Name="stackPanel">
+                    $($this.AddChild($Button1, @{Click = $this.vars.AddButton}))
+                    <Button Name="button2">Button2 $(Get-String)</Button>
+                </StackPanel>
+            </Window>
 "@
-            })
         }
 
         write-host ($window | out-string)

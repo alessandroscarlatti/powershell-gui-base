@@ -28,7 +28,7 @@ Function New-SimpleComponent([ScriptBlock] $ComponentDefScript, $Props) {
     _Log "Defining component $($NewComponent)"
     $NewComponent._DefineComponent()
 
-    _Log "New-SimpleComponent: Return"
+    _Log "New-SimpleComponent: Return component: $($NewComponent)"
     return $NewComponent
 }
 
@@ -102,11 +102,26 @@ $_SimpleComponentDef = {
     function _DefineComponent() {
         try {
             _Log "_DefineComponent: $($this)"
+
+            #Call the definition script
+            #Evaluate the result to see if the user returned XAML
             $funcs = @{
                 "Xaml" = {param($sb) $this.Xaml($sb) };
                 "Init" = {param($sb) $this.Init($sb) };
             }
-            $this._ComponentDefScript.InvokeWithContext($funcs, (Get-Variable 'this'), ($this))
+            $result = $this._ComponentDefScript.InvokeWithContext($funcs, (Get-Variable 'this'), ($this))[0]
+
+            if ($result) {
+                _Log "_DefineComponent: $($this) Definition script returned value: $($result) Expecting value to be xaml for this component."
+                if ($result -is [string]) {
+                    $this._XamlScript = { $result }.GetNewClosure()
+                } elseif ($result -is [xml]) {
+                    $this._XamlScript = { $result }.GetNewClosure()
+                } else {
+                    _Log "_DefineComponent: $($this) Definition script return value not able to be considered XAML."
+                }
+            }
+
             _Log "_DefineComponent: $($this) Complete"
         } catch {
             _Throw "_DefineComponent: Error: $($_ | out-string)"
@@ -126,7 +141,16 @@ $_SimpleComponentDef = {
 
             #Run the xaml script
             #InvokeWithContext returns a list of objects (presumably b/c of supporting streaming)
-            $this._Xaml = $this._XamlScript.InvokeWithContext($null, (Get-Variable "this"), ($this))[0]
+            $xaml = $this._XamlScript.InvokeWithContext($null, (Get-Variable "this"), ($this))[0]
+            if ($xaml -is [xml]) {
+                $this._Xaml = $xaml
+            }
+            elseif ($xaml -is [string]) {
+                $this._Xaml = [xml]$xaml
+            }
+            else {
+                _Throw "Unable to construct xaml from object: $($xaml | out-string)"
+            }
 
             _Log "_RealizeXaml: Xaml from script: $($this._Xaml.OuterXml)"
 
