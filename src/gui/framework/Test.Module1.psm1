@@ -13,3 +13,7 @@ Function New-TestObject1() {
         Export-ModuleMember -Function NewTestObjectFromInsideModule
     }.GetNewClosure()
 }
+
+Function Get-String() {
+    return "Hello World"
+}
