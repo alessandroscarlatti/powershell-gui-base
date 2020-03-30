@@ -23,6 +23,8 @@ Function New-SimpleComponent([ScriptBlock] $ComponentDefScript, $Props) {
 $_SimpleComponentDef = {
     param($_ComponentId, [ScriptBlock] $_ComponentDefScript, $Props)
 
+    $ErrorActionPreference = "Stop"
+
     $Refs = @{};            #map of ref WPF components directly relating to this component, eg MyButton1 => [WPF object]
                             #This map will NOT contain grandchild WPF components.
                             #This map will only be populated after _RealizeWpf has been called.
@@ -63,9 +65,7 @@ $_SimpleComponentDef = {
             &$this._ComponentDefScript $this
             _Log "_DefineComponent: $($this) Complete"
         } catch {
-            $msg = "_DefineComponent: Error: $($_ | out-string)"
-            _Log $msg
-            throw $msg
+            _Throw "_DefineComponent: Error: $($_ | out-string)"
         }
     }
 
@@ -75,7 +75,7 @@ $_SimpleComponentDef = {
     #will have valid xaml and no remaining placeholders.
     function _RealizeXaml() {
         try {
-            _Log "_DefineComponent: $($this)"
+            _Log "_RealizeXaml: $($this)"
 
             #Assert that we have a xaml script to run
             if (-not($this._XamlScript)) { _Throw "_RealizeXaml: Error. No xaml provided. Must provide a XAML script." }
@@ -83,24 +83,45 @@ $_SimpleComponentDef = {
             #Run the xaml script
             $this._Xaml = &$this._XamlScript $this
 
-            #TODO Assign the root element a unique name, if it does not already contain a name attribute.
+            #Add a name attribute for the root node if it does not already exist.
+            _Log "_RealizeXaml: $($this) Checking if need to create root node Name attribute"
+            $RootNode = $this._Xaml.SelectSingleNode("/*")
+            $RootNodeNameAttribute = $this._Xaml.SelectSingleNode("/*/@Name")
+            if (-not($RootNodeNameAttribute)) {
+                _Log "_RealizeXaml: $($this) Creating root node Name attribute"
+                $RootNodeNameAttribute = $RootNode.OwnerDocument.CreateAttribute("Name")
+                $RootNodeNameAttribute.Value = "this"
+                $RootNode.Attributes.Append($RootNodeNameAttribute) | out-null
+
+                _Log "_RealizeXaml: $($this) Added root node Name attribute: $($RootNodeNameAttribute.Value)"
+            }
+
+            #Create a ref mapping for "this". It will point to the root node. 
+            #The root node is guaranteed to have a Name attribute due to setup above.
+            $this._Refs["this"] = $RootNodeNameAttribute.Value
 
             #Find and store the name attributes that are present in this component
-            $this._Xaml.SelectNodes("//*[@Name]") | % {
+            $this._Xaml.SelectNodes("//@Name") | % {
+
+                #TODO Prepend any name attributes that do not begin with _ with this component's XamlNamePrefix
+                #This will help later so that those WPF components can be traced to this component for use during the init process.
+                if (-not($_.Value.StartsWith("_"))) {
+                    $newName = $this._XamlNamePrefix + $_.Value
+                    _Log "_RealizeXaml: Replace original Name $($_.Value) with unique Name $($newName)"
+                    $_.Value = $newName
+                }
+
                 #Name attribute will be something like _SimpleComponent_1_MyButton1
                 #The short name should be MyButton1
                 #In the case of the name being something like MyButton2
                 #The conversion to short name will be a noop.
-                $shortName = $_.Name -replace $this._XamlNamePrefix, ""
-                $this._Refs[$shortName] = $_.Name
+                $shortName = $_.Value -replace $this._XamlNamePrefix, ""
+                $this._Refs[$shortName] = $_.Value
             }
-
-            #TODO Replace the name attribute with a unique id that includes this component id. 
-            #This will help later so that those WPF components can be traced to this component for use during the init process.
 
             #TODO use child component map to replace xaml placeholders with child component xaml.
 
-            _Log "_DefineComponent: $($this) Complete"
+            _Log "_RealizeXaml: $($this) Complete"
         } catch {
             _Throw "_RealizeXaml: Error: $($_ | out-string)"
         }
@@ -179,7 +200,7 @@ $_SimpleComponentDef = {
                 &$this._InitScript $this
             }
         } catch {
-            _Throw "_Init: $($this) Error calling int function: $($_ | out-string)"
+            _Throw "_Init: $($this) Error calling init function, Check your Init function for the following error: $($_ | out-string)"
         }
     }
 

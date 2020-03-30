@@ -10,10 +10,10 @@ Describe "SimpleComponent" {
             $this.Xaml({
                 write-host "Xaml is running with props $($this.props | out-string)."
                 [xml]@"
-                <Window Name="Window1" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+                <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
                     <StackPanel>
-                        <Button Name="_SimpleComponent_0_Button1">Button1</Button>
-                        <Button Name="Button2">Button2</Button>
+                        <Button Name="button1">Button1</Button>
+                        <Button Name="button3">Button2</Button>
                     </StackPanel>
                 </Window>
 "@
@@ -24,6 +24,10 @@ Describe "SimpleComponent" {
 
                 $this.refs.Button1.Add_Click({
                     write-host "clicked button 1"
+                })
+
+                $this.refs.Button2.Add_Click({
+                    write-host "clicked button 2"
                 })
 
                 write-host "Init is running with props $($this.props | out-string)"
@@ -45,6 +49,6 @@ Describe "SimpleComponent" {
 
         write-host ($component1 | out-string)
 
-        $component1.refs.Window1.ShowDialog()
+        $component1.refs.this.ShowDialog()
     }
 }
