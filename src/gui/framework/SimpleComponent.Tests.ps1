@@ -1,6 +1,8 @@
 import-module ./SimpleComponent.psm1
 import-module ./Test.Module1.psm1
 
+#Set-PSDebug -trace 1
+
 Describe "SimpleComponent" {
     It "Creates top level component" {
         $window = Render {
@@ -47,7 +49,7 @@ Describe "NestedComponent" {
                 }.GetNewClosure())
             })
 @"
-                <Button $($this.xmlns)>Another button $($this.props.id)</Button>
+            <Button $($this.xmlns)>Another button $($this.props.id)</Button>
 "@
         }
 
@@ -64,7 +66,7 @@ Describe "NestedComponent" {
 @"
             <Window $($this.xmlns)>
                 <StackPanel Name="stackPanel">
-                    $($this.AddChild($Button1, @{Click = $this.vars.AddButton}))
+                    $($this.RenderChild($Button1, @{Click = $this.vars.AddButton}))
                     <Button Name="button2">Button2 $(Get-String)</Button>
                 </StackPanel>
             </Window>

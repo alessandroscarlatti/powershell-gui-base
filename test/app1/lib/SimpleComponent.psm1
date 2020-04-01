@@ -15,13 +15,17 @@ Add-Type "public struct wpf {}"
     return Render($ComponentDefScript, $Props)
 }
 
-Function Render([ScriptBlock] $ComponentDefScript, $Props) {
+Function Import-Component([string] $scriptFile) {
+    Get-Command $scriptFile | Select-Object -ExpandProperty ScriptBlock
+}
+
+Function ConvertTo-Wpf([ScriptBlock] $ComponentDefScript, $Props) {
     $Component = New-SimpleComponent $ComponentDefScript $Props
     $Component.RenderAndInit()
     return $Component.refs.this
 }
 
-Function RenderComponent([ScriptBlock] $ComponentDefScript, $Props) {
+Function ConvertTo-Component([ScriptBlock] $ComponentDefScript, $Props) {
     $Component = New-SimpleComponent $ComponentDefScript $Props
     $Component.RenderAndInit()
     return $Component
@@ -156,7 +160,10 @@ $_SimpleComponentDef = {
 
             #Run the xaml script
             #InvokeWithContext returns a list of objects (presumably b/c of supporting streaming)
-            $xaml = $this._XamlScript.InvokeWithContext($null, (Get-Variable "this"), ($this))[0]
+            $xmlns = $this.xmlns
+            $varThis = (Get-Variable "this")
+            $varXmlns = (Get-Variable "xmlns")
+            $xaml = $this._XamlScript.InvokeWithContext($null, ($varThis, $varXmlns), ($this))[0]
             if ($xaml -is [xml]) {
                 $this._Xaml = $xaml
             }
@@ -337,7 +344,9 @@ $_SimpleComponentDef = {
             _Log "_InitDeep: $($this)"
             if ($this._InitScript) {
                 _Log "_InitDeep: $($this) Calling init function: $($this._InitScript)"
-                $this._InitScript.InvokeWithContext($null, (Get-Variable "this"), ($this))
+                $refs = $this.refs
+                $props = $this.Props
+                $this._InitScript.InvokeWithContext($null, ((Get-Variable "this"), (Get-Variable "refs"), (Get-Variable "props")), ($this))
             }
 
             $this._Children.Keys | % {
