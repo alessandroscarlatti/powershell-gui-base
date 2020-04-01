@@ -34,6 +34,15 @@ Function Mount-Child([ScriptBlock] $ComponentDefScript, $ParentComponent, $Props
     $ParentComponent.RenderChild($ComponentDefScript, $Props, $Context)
 }
 
+Function Mount-Children($Children) {
+    $xaml = ""
+    foreach($child in $Children) {
+        $xaml += $child
+    }
+
+    return $xaml
+}
+
 Function New-Child([ScriptBlock] $ComponentDefScript, $ParentComponent, $Props, $Context) {
     if ($null -eq $Context) {
         $Context = $ParentComponent.Context

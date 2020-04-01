@@ -1,11 +1,10 @@
 param($this)
 
+# imports
 import-module ./lib/SimpleComponent.psm1
-
 $__Button1 = Import-Component "$($this.context.App.SrcDir)/Button1.ps1"
 $__Button2 = Import-Component "$($this.context.App.SrcDir)/Button2.ps1"
-
-$this.vars.id = 23
+$__TodoList = Import-Component "$($this.context.App.SrcDir)/TodoList.ps1"
 
 #Define Behaviors
 
@@ -18,7 +17,7 @@ $this.vars._AddButton = {
     
         #create a new button
         #and add it to the stack panel
-        $newButton = mount-component $script:__Button2 @{ id = $script:this.vars.id++} $script:this.context
+        $newButton = mount-component $script:__Button2 @{ id = $script:this.context.App.ButtonId++} $script:this.context
         $script:this.refs.stackPanel.Children.Add($newButton)
     } catch {
         write-host "another error: $($_ | out-string)"
@@ -33,6 +32,7 @@ $this.vars._AddButton = {
     <StackPanel Name="stackPanel">
         $(mount-child $__Button1 $this @{Click = $this.vars._AddButton})
         <Button Name="button2">Button2 does nothing</Button>
+        $(mount-child $__TodoList $this)
     </StackPanel>
 </Window>
 "@
