@@ -12,6 +12,9 @@ $_StoreDef = {
     param($file, $defaultValue, $ForceDefault, $id = "default")
     $ErrorActionPreference = "Stop"
 
+    #convert file to absolute path
+    $file = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($file)
+
     Function _Log($msg) {
         if ($env:DEBUG) {
             write-host $msg
@@ -89,8 +92,10 @@ $_StoreDef = {
     }
 
     #Create an empty store in persistence, overwriting any previous store.
+    #Create directories if not exists
     function _CreateDefaultStore() {
         _Log("Store_$id : Creating empty store in file: $file")
+        md -force (split-path $file) | out-null
         set-content $file ($defaultValue | ConvertTo-Json)
     }
 

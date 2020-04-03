@@ -2,7 +2,7 @@ import-module ./Store.psm1
 
 Describe "Store" {
     It "sets and gets values" {
-        $store1 = New-Store "TestStore1.json" -ForceDefault
+        $store1 = New-Store "config/TestStore1.json" -ForceDefault
         $store1.SetValue("var1", "val1")
         $store1.SetValue("var2", @{ var3 = "val3"})
         $store1.SetValue("list1", @( "item1", "item2", "item3"))
@@ -15,7 +15,7 @@ Describe "Store" {
 
         #load a new store
         #assert values retrieved from store
-        $store2 = New-Store "TestStore1.json"
+        $store2 = New-Store "config/TestStore1.json"
         $store2.GetValue("var1") | should be "val1"
         $store2.GetValue("var2").var3 | should be "val3"
         $store2.GetValue("list1").length | should be 3
@@ -34,7 +34,7 @@ Describe "Store" {
         
         #load a new store
         #assert values retrieved from store
-        $store3 = New-Store "TestStore1.json"
+        $store3 = New-Store "config/TestStore1.json"
         $store3.GetValue("newVar1") | should be "newVal1"
         $store3.GetValue("list1").length | should be 4
         $store3.GetValue("list1")[3] | should be "item4"
