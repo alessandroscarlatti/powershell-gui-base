@@ -21,7 +21,7 @@ Function Import-Component([string] $scriptFile) {
         try {
             &$script:sb($this) 
         } catch {
-            throw "Error: $($_ | out-string)"
+            throw "Error defining component in file $($scriptFile): $($_ | out-string)"
         }
     }.GetNewClosure()
 }
@@ -210,7 +210,14 @@ $_SimpleComponentDef = {
             #Run the xaml script
             #InvokeWithContext returns a list of objects (presumably b/c of supporting streaming)
             $funcs = @{
-                "RenderChild" = {param($sb) $this.RenderChild($sb) };
+                "RenderChild" = {
+                    param($sb)
+                    try {
+                        $this.RenderChild($sb) 
+                    } catch {
+                        throw $_
+                    }
+                };
             }
 
             $xmlns = $this.xmlns
@@ -453,5 +460,5 @@ Function _Log($msg) {
 
 Function _Throw($msg) {
     _Log $msg
-    throw $msg
+    throw new-object System.Exception $msg
 }
