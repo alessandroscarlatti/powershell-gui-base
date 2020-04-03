@@ -380,7 +380,7 @@ $_SimpleComponentDef = {
 Function _Log($msg) {
     if ($env:DEBUG) {
         write-host $msg
-        $msg >> stuff.txt
+        $msg >> "_SimpleComponent.log"
     }
 }
 

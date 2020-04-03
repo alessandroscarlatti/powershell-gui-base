@@ -1,1 +1,3 @@
 stuff.txt
+*.log
+*.backup.json
