@@ -1,10 +1,10 @@
 param($this)
 
 # imports
-import-module "$($this.context.SrcDir)/lib/SimpleComponent.psm1"
-$__Button1__ = Import-Component "$($this.context.SrcDir)/Button1.ps1"
-$__Button2__ = Import-Component "$($this.context.SrcDir)/Button2.ps1"
-$__TodoList__ = Import-Component "$($this.context.SrcDir)/TodoList.ps1"
+import-module "$($this.Context.SrcDir)/main/WpfComponent/SimpleComponent.psm1"
+$__Button1__ = Import-Component "$($this.context.AppDir)/Button1.ps1"
+$__Button2__ = Import-Component "$($this.context.AppDir)/Button2.ps1"
+$__TodoList__ = Import-Component "$($this.context.AppDir)/TodoList.ps1"
 
 #Define Behaviors
 

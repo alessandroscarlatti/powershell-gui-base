@@ -1,37 +1,21 @@
-$workingDir = Split-Path $script:MyInvocation.MyCommand.Path
-
-write-host "working dir= $($workingDir)"
-
-import-module "$workingDir/lib/SimpleComponent.psm1" -force
-import-module "$workingDir/lib/Store.psm1" -force
-
-$ErrorActionPreference = "Stop"
-
-# set-psdebug -trace 1
-
 try {
-    $App = @{}
-    $App.Name = "app2"
-    $App.ButtonId = 23
-    $App.DefaultStore = @{
-        Todos = @(
-            "asdf",
-            "qwer",
-            "zxcv"
-        )
-    }
-    $App.SrcDir = $workingDir
+    $ErrorActionPreference = "Stop"
 
-    $App.Store = new-store "config/store.json" $App.DefaultStore
+    #Setup app
+    $Context = @{}
+    $Context.AppDir = Split-Path $script:MyInvocation.MyCommand.Path
+    $Context.SrcDir = "$($Context.AppDir)\..\..\..\src"
+    $Context.Name = "app2"
+    $Context.ButtonId = 23
 
-    $App.Service1 = $null #some service defined here...
+    & "$($Context.AppDir)\Store.ps1" ($Context)
 
-    $__Window = Import-Component "$($App.SrcDir)/Window.ps1"
-    $Window = Mount-Component $__Window @{} $App
-
-    # This makes it pop up
+    #Render app
+    import-module "$($Context.SrcDir)/main/WpfComponent/SimpleComponent.psm1"
+    $__WINDOW__ = Import-Component "$($Context.AppDir)/Window.ps1"
+    $Window = Mount-Component $__WINDOW__ @{} $Context
     $Window.ShowDialog()
 } catch {
     write-host ($_.Exception.GetBaseException().Message)
-    write-host ($_.Exception.GetBaseException().ErrorRecord)
+    write-host ($_.Exception.GetBaseException().ErrorRecord | out-string)
 }

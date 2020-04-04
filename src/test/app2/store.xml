@@ -1,0 +1,36 @@
+<Objs Version="1.1.0.1" xmlns="http://schemas.microsoft.com/powershell/2004/04">
+  <Obj RefId="0">
+    <TN RefId="0">
+      <T>System.Collections.Hashtable</T>
+      <T>System.Object</T>
+    </TN>
+    <DCT>
+      <En>
+        <S N="Key">Todos</S>
+        <Obj N="Value" RefId="1">
+          <TN RefId="1">
+            <T>System.Object[]</T>
+            <T>System.Array</T>
+            <T>System.Object</T>
+          </TN>
+          <LST>
+            <S>asdf</S>
+            <S>qwer</S>
+            <S>zxcv</S>
+            <S>new todo 24</S>
+            <S>new todo 25</S>
+            <S>new todo 26</S>
+            <S>new todo 24</S>
+            <S>new todo 24</S>
+            <S>new todo 24</S>
+            <S>new todo 25</S>
+            <S>new todo 26</S>
+            <S>new todo 27</S>
+            <S>new todo 28</S>
+            <S>new todo 24</S>
+          </LST>
+        </Obj>
+      </En>
+    </DCT>
+  </Obj>
+</Objs>
