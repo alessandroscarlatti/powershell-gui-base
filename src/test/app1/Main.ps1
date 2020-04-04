@@ -1,12 +1,11 @@
-import-module ./lib/SimpleComponent.psm1
+$ErrorActionPreference = "stop"
 
 $App = @{}
-$App.SrcDir = Split-Path $script:MyInvocation.MyCommand.Path
+$App.AppDir = Split-Path $script:MyInvocation.MyCommand.Path
 
-$App.Service1 = {
-    #some service defined here...
-}
+import-module "$($App.AppDir)/../../main/WpfComponent/SimpleComponent.psm1"
 
-$__Window = Import-Component "$($App.SrcDir)/Window.ps1"
-$Window = ConvertTo-Wpf $__Window @{} @{App = $App}
+$__WINDOW__ = Import-Component "$($App.AppDir)/Window.ps1"
+
+$Window = Mount-Component $__WINDOW__ @{App = $App}
 $Window.ShowDialog()
