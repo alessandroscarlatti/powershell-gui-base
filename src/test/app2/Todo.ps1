@@ -1,4 +1,5 @@
-Init({
+$this.Init({
+    param($this)
     $this.vars.done = $false
     $this.refs.this.Add_Click({
         if ($script:this.vars.done) {
@@ -11,4 +12,4 @@ Init({
     }.GetNewClosure())
 })
 
-"<Button $xmlns>$($this.props.text)</Button>"
+"<Button $($this.xmlns)>$($this.props.text)</Button>"

@@ -1,4 +1,6 @@
-Init({
+param($this)
+
+$this.Init({
     $this.refs.this.Add_Click({
         write-host "clicked button $($script:this.props.id)"
 
@@ -7,5 +9,5 @@ Init({
 })
 
 @"
-<Button $xmlns>Another button $($this.props.id)</Button>
+<Button $($this.xmlns)>Another button $($this.props.id)</Button>
 "@

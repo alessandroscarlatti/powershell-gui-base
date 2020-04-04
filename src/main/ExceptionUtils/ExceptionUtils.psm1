@@ -42,6 +42,7 @@ function Out-StackTrace([Parameter(Mandatory, ValueFromPipeline)] $_) {
             #so print the error invocation details
             write-host ($_ | out-string)
             write-host $_.Exception
+            write-host "at $($_.ScriptStackTrace)"
             $e = $_.Exception
         } elseif ($_ -is [Exception]) {
             #this is an exception

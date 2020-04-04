@@ -12,21 +12,30 @@ $_StoreDef = {
     param($file, $defaultValue, $ForceDefault, $id = "default")
     $ErrorActionPreference = "Stop"
 
-    #convert file to absolute path
-    $file = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($file)
-
     Function _Log($msg) {
         if ($env:DEBUG) {
             write-host $msg
             $msg >> "_Store.log"
         }
     }
-    Function _Throw($msg) {
+    Function _Throw($msg, $e) {
         _Log $msg
-        throw $msg
+        _Log ($e | out-string)
+        throw new-object Exception ($msg, $e.Exception)
+    }
+
+    Function _ToAbsolutePath($path) {
+        try {
+            #will throw a non-terminating error if path does not exist
+            Resolve-Path $path -ea stop
+        } catch {
+            #target object is the path that does not exist
+            $_.TargetObject
+        }
     }
     
     $_Store = $null; #the actual object representing the store
+    $file = _ToAbsolutePath($file) #convert file to absolute path
 
     _Log "Store_$id : Creating store from file: $file"
 
@@ -55,7 +64,7 @@ $_StoreDef = {
                 $this._TryLoadStore()
             } catch {
                 #Could not create the store, even after trying to create a new store.
-                _Throw("Store_$id : Error loading store (final attempt) from file: $file : $($_ | out-string)")
+                _Throw("Store_$id : Error loading store (final attempt) from file: $file", $_)
             }
         }
     }
@@ -65,7 +74,7 @@ $_StoreDef = {
         try {
             return $this._store[$key]
         } catch {
-            _Throw("Store_$id : Error getting value for key: $($key) : $($_ | out-string)")
+            _Throw("Store_$id : Error getting value for key: $($key)", $_)
         }
     }
 
@@ -80,7 +89,7 @@ $_StoreDef = {
                 $this._TrySaveStore()
             }
         } catch {
-            . _Throw("Store_$id : Error setting value for key: $($key) value: $($value) : $($_ | out-string)")
+            _Throw("Store_$id : Error setting value for key: $($key) value: $($value)", $_)
         }
     }
 
@@ -109,7 +118,7 @@ $_StoreDef = {
             $parser.MaxJsonLength = $strStore.length
             $this._Store = $parser.Deserialize($strStore, [hashtable])
         } catch {
-            _Throw("Store_$id : Error reading store from file: $file : $($_ | out-string)")
+            _Throw("Store_$id : Error reading store from file: $file", $_)
         }
     }
 
@@ -124,7 +133,7 @@ $_StoreDef = {
             _Log("Store_$id : Back up store to file $backupFile")
             set-content $backupFile (get-content -raw $file)
         } catch {
-            _Log("Store_$id : Error backing up store to file $backupFile : $($_ | out-string)")
+            _Log("Store_$id : Error backing up store to file $backupFile", $_)
         }
     }
 
@@ -135,7 +144,7 @@ $_StoreDef = {
             _Log("Store_$id : store is: $_strStore")
             set-content $file $_strStore
         } catch {
-            _Throw("Error saving store to file: $file : $($_ | out-string)")
+            _Throw("Error saving store to file: $file", $_)
         }
     }
 
