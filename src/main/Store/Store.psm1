@@ -46,6 +46,8 @@ $_StoreDef = {
     }
     
     $_Store = $null; #the actual object representing the store
+    $_SubscriptionIndex = 0; #the index for the next subscription id
+    $_Subscribers = @{} #map of all susbcribers, eg subscriber_0 => { ...some code runs on event }
     $file = _ToAbsolutePath($file) #convert file to absolute path
 
     _Log "Store_$id : Creating store from file: $file"
@@ -98,6 +100,43 @@ $_StoreDef = {
 
     function Save() {
         $this._TrySaveStore()
+    }
+
+    #Dispatch an action to the store
+    function Dispatch($action) {
+        #call the subscribers
+        _CallSubscribers($action)
+    }
+
+    function Subscribe($callback) {
+        #add the callback to the map
+        _Log("Store_$id : adding subscription: $($callback)")
+        $subscriberId = "Subscriber_" + $this._SubscriptionIndex++
+        $_Subscribers[$subscriberId] = $callback
+
+        #return a subscription object
+        #with a single Unsubscribe() method.
+        $subscription = new-object -TypeName PSCustomObject
+        $subscription | add-member -MemberType ScriptMethod -Name Unsubscribe -Value { 
+            $script:this.Unsubscribe($subscriberId) 
+        }.GetNewClosure()
+        return $subscription
+    }
+
+    #Unsubscribe the given subscriber by id, eg "Subscriber_0"
+    function Unsubscribe($SubscriberId) {
+        #remove the subscriber from the map
+        _Log("Store_$id : removing subscription: $($callback)")
+        $_Subscribers.Remove($SubscriberId)
+    }
+
+    function _CallSubscribers($Action) {
+        _Log("Store_$id : call subscribers: $($callback)")
+        foreach ($subscriberId in $_Subscribers.Keys) {
+            _Log("Store_$id : call subscriber: $($key)")
+            #call the subscriber, passing the store and the action
+            &$_Subscribers[$subscriberId] $_Store $Action
+        }
     }
 
     #Return whether or not the store exists in persistence.

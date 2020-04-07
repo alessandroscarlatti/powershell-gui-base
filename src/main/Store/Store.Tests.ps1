@@ -1,4 +1,4 @@
-import-module ./Store.psm1
+import-module ./Store.psm1 -force
 
 $ErrorActionPreference = "Stop"
 
@@ -61,5 +61,56 @@ Describe "Store" {
         #assert value was saved
         $store2 = New-Store "TestStores/TestStore5.xml"
         $store2.GetValue() | should be $null
+    }
+}
+
+Describe "Events" {
+    It "subscription is called back on dispatch" {
+        $store = New-Store "TestStores/TestStore6.xml" -ForceDefault
+        
+        $TestResults = @{
+            callback1Invoked = $false;
+            callback2Invoked = $false;
+        }
+
+        #create two susbscriptions
+        $subscription1 = $store.subscribe({
+            param($store, $action)
+            $script:TestResults.callback1Invoked = $true
+        }.GetNewClosure())
+
+        $subscription2 = $store.subscribe({
+            param($store, $action)
+            $script:TestResults.callback2Invoked = $true
+        }.GetNewClosure())
+
+        #dispatch an action
+        $store.Dispatch(@{
+            type = "SOME_ACTION";
+            var1 = "val1";
+        })
+
+        #callbacks should have been invoked after subscribe and dispatch
+        $TestResults.callback1Invoked | should be $true
+        $TestResults.callback2Invoked | should be $true
+
+        #now unsubscribe
+        $subscription1.Unsubscribe()
+        $subscription2.Unsubscribe()
+
+        #reset the test results
+        #they should stay false this time
+        #since we are unsubscribed
+        $TestResults.callback1Invoked = $false
+        $TestResults.callback2Invoked = $false
+
+        $store.Dispatch(@{
+            type = "SOME_ACTION";
+            var1 = "val1";
+        })
+
+        #callbacks should not be invoked after unsubscribe
+        $TestResults.callback1Invoked | should be $false
+        $TestResults.callback2Invoked | should be $false
     }
 }
