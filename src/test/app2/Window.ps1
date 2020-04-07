@@ -9,21 +9,8 @@ $__TodoList__ = Import-Component "$($this.context.AppDir)/TodoList.ps1"
 
 #create a new button
 #and add it to the stack panel
-$this.vars._AddButton = {
-    try {
-        write-host "add another button."
-        write-host "stack panel is $($script:this.refs.stackPanel)"
-
-        $script:this.context.ButtonId++
-        $script:this.context.store.todos += "new todo $($script:this.context.ButtonId)"
-        $script:this.context._store.Save()
-        $script:this.context._store.Dispatch(@{
-            type = "ADD_TODO";
-            text = "new todo $($script:this.context.ButtonId)"
-        })
-    } catch {
-        write-host "error: $($_.Exception.GetBaseException().ToString())"
-    }
+$ADD_TODO = {
+    & "$($script:this.context.AppDir)/Actions/ADD_TODO.ps1"($script:this.context)
 }.GetNewClosure()
 
 @"
@@ -33,7 +20,7 @@ $this.vars._AddButton = {
 >
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Name=":stackPanel">
-            $(mount-child $__Button1__ $this @{Click = $this.vars._AddButton})
+            $(mount-child $__Button1__ $this @{Click = $ADD_TODO})
             <Button Name=":button2">Button2 does nothing</Button>
             $(mount-child $__TodoList__ $this)
         </StackPanel>
