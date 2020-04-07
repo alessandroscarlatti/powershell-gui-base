@@ -3,7 +3,6 @@ param($this)
 # imports
 import-module "$($this.Context.SrcDir)/main/WpfComponent/SimpleComponent.psm1"
 $__Button1__ = Import-Component "$($this.context.AppDir)/Button1.ps1"
-$__Button2__ = Import-Component "$($this.context.AppDir)/Button2.ps1"
 $__TodoList__ = Import-Component "$($this.context.AppDir)/TodoList.ps1"
 
 #Define Behaviors
@@ -14,17 +13,14 @@ $this.vars._AddButton = {
     try {
         write-host "add another button."
         write-host "stack panel is $($script:this.refs.stackPanel)"
-    
-        #create a new button
-        #and add it to the stack panel
-        $newButton = mount-component $script:__Button2__ @{ id = $script:this.context.ButtonId} $script:this.context
-        $script:this.refs.stackPanel.Children.Add($newButton)
 
-        # $todos = $script:this.context.store.todos
-        $script:this.context.store.todos += "new todo $($script:this.context.ButtonId)"
         $script:this.context.ButtonId++
+        $script:this.context.store.todos += "new todo $($script:this.context.ButtonId)"
         $script:this.context._store.Save()
-        write-host "done"
+        $script:this.context._store.Dispatch(@{
+            type = "ADD_TODO";
+            text = "new todo $($script:this.context.ButtonId)"
+        })
     } catch {
         write-host "error: $($_.Exception.GetBaseException().ToString())"
     }

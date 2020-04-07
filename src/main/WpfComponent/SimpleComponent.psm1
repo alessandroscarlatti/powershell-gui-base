@@ -212,7 +212,7 @@ $_SimpleComponentDef = {
                 } elseif ($result -is [xml]) {
                     $this._XamlScript = { $result }.GetNewClosure()
                 } else {
-                    _Log "_DefineComponent: $($this) Definition script return value not able to be considered XAML."
+                    _Throw "_DefineComponent: $($this) Definition script return value not able to be considered XAML. Return value was $($result.ToString())"
                 }
             }
 
@@ -231,7 +231,9 @@ $_SimpleComponentDef = {
             _Log "_RealizeXaml: $($this)"
 
             #Assert that we have a xaml script to run
-            if (-not($this._XamlScript)) { _Throw "_RealizeXaml: Error. No xaml provided. Must provide a XAML script." }
+            if (-not($this._XamlScript)) { 
+                _Throw "_RealizeXaml: Error. No xaml provided. Must provide a XAML script. Component script was: $($_ComponentDefScript)" 
+            }
 
             #Run the xaml script
             #InvokeWithContext returns a list of objects (presumably b/c of supporting streaming)

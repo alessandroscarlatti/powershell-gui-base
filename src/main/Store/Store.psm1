@@ -135,7 +135,11 @@ $_StoreDef = {
         foreach ($subscriberId in $_Subscribers.Keys) {
             _Log("Store_$id : call subscriber: $($key)")
             #call the subscriber, passing the store and the action
-            &$_Subscribers[$subscriberId] $_Store $Action
+            try {
+                &$_Subscribers[$subscriberId] $_Store $Action
+            } catch {
+                _Throw("Error calling subscriber $($subscriberId)", $_)
+            }
         }
     }
 
