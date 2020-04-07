@@ -11,4 +11,5 @@ $DefaultStore = @{
 
 #Create new store
 import-module "$($Context.SrcDir)/main/Store/Store.psm1"
-$Context.Store = new-store "$($Context.AppDir)\store.xml" $DefaultStore
+$Context._Store = new-store "$($Context.AppDir)\store.xml" $DefaultStore
+$Context.Store = $Context._Store.GetValue()

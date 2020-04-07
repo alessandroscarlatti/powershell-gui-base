@@ -13,8 +13,8 @@ $this.Init({
 @"
 <Window $($this.xmlns)>
     <StackPanel>
-        <Button Name="button1">Button1</Button>
-        <Button Name="button2">Button2</Button>
+        <Button Name=":button1">Button1</Button>
+        <Button Name=":button2">Button2</Button>
     </StackPanel>
 </Window>
 "@

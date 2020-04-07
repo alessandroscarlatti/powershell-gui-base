@@ -2,3 +2,4 @@ stuff.txt
 *.log
 *.backup.json
 store.xml
+TestStores/

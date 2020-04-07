@@ -244,24 +244,20 @@ $_SimpleComponentDef = {
                 _Log "_RealizeXaml: $($this) Creating root node Name attribute"
                 $RootNode = $this._Xaml.SelectSingleNode("/*")
                 $RootNodeNameAttribute = $RootNode.OwnerDocument.CreateAttribute("Name")
-                $RootNodeNameAttribute.Value = "this"
+                $RootNodeNameAttribute.Value = ":this"
                 $RootNode.Attributes.Append($RootNodeNameAttribute) | out-null
 
                 _Log "_RealizeXaml: $($this) Added root node Name attribute: $($RootNodeNameAttribute.Value)"
             }
 
-            #Create a ref mapping for "this". It will point to the root node. 
-            #The root node is guaranteed to have a Name attribute due to setup above.
-            $this._Refs["this"] = $RootNodeNameAttribute.Value
-
             #Find and store the name attributes that are present in this component
             $this._Xaml.SelectNodes("//@Name") | % {
 
-                #Prepend any name attributes that do not begin with "_____" with this component's XamlNamePrefix
-                #Users should not reasonbaly use "_____" to begin variable names, but might reasonably use 1 or 2 underscores
+                #Prepend any name attributes that begin with ":" with this component's XamlNamePrefix
+                #Users should not reasonbaly use ":" to begin absolute component names, but might reasonably regular names for absolute components
                 #This will help later so that those WPF components can be traced to this component for use during the init process.
-                if (-not($_.Value.StartsWith("_____"))) {
-                    $newName = $this._XamlNamePrefix + $_.Value
+                if ($_.Value.StartsWith(":")) {
+                    $newName = $this._XamlNamePrefix + ($_.Value -replace ":", "")
                     _Log "_RealizeXaml: Replace original Name $($_.Value) with unique Name $($newName)"
                     $_.Value = $newName
                 }
@@ -273,6 +269,11 @@ $_SimpleComponentDef = {
                 $shortName = $_.Value -replace $this._XamlNamePrefix, ""
                 $this._Refs[$shortName] = $_.Value
             }
+
+            #Create a ref mapping for "this". It will point to the root node. 
+            #The root node is guaranteed to have a Name attribute due to setup above.
+            #Additionally, the root node may have been renamed in the step above.
+            $this._Refs["this"] = $RootNodeNameAttribute.Value
 
             #TODO use child component map to replace xaml placeholders with child component xaml.
             _Log "_RealizeXaml: $($this): Render component placeholders"

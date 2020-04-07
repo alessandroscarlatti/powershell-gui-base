@@ -17,12 +17,13 @@ $this.vars._AddButton = {
     
         #create a new button
         #and add it to the stack panel
-        $newButton = mount-component $script:__Button2__ @{ id = $script:this.context.ButtonId++} $script:this.context
+        $newButton = mount-component $script:__Button2__ @{ id = $script:this.context.ButtonId} $script:this.context
         $script:this.refs.stackPanel.Children.Add($newButton)
 
-        $todos = $script:this.context.store.GetValue("Todos")
-        $todos += "new todo $($script:this.context.ButtonId)"
-        $script:this.context.store.SetValue("Todos", $todos)
+        # $todos = $script:this.context.store.todos
+        $script:this.context.store.todos += "new todo $($script:this.context.ButtonId)"
+        $script:this.context.ButtonId++
+        $script:this.context._store.Save()
         write-host "done"
     } catch {
         write-host "error: $($_.Exception.GetBaseException().ToString())"
@@ -35,9 +36,9 @@ $this.vars._AddButton = {
     Title="Stuff and things"
 >
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Name="stackPanel">
+        <StackPanel Name=":stackPanel">
             $(mount-child $__Button1__ $this @{Click = $this.vars._AddButton})
-            <Button Name="button2">Button2 does nothing</Button>
+            <Button Name=":button2">Button2 does nothing</Button>
             $(mount-child $__TodoList__ $this)
         </StackPanel>
     </ScrollViewer>

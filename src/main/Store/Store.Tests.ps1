@@ -1,42 +1,65 @@
 import-module ./Store.psm1
 
+$ErrorActionPreference = "Stop"
+
 Describe "Store" {
-    It "sets and gets values" {
-        $store1 = New-Store "config/TestStore1.json" -ForceDefault
-        $store1.SetValue("var1", "val1")
-        $store1.SetValue("var2", @{ var3 = "val3"})
-        $store1.SetValue("list1", @( "item1", "item2", "item3"))
+    It "saves values from store modified in separate object variable" {
+        $store1 = New-Store "TestStores/TestStore2.xml" @{ var1 = "val1" } -ForceDefault
 
-        #assert values retrieved from store
-        $store1.GetValue("var1") | should be "val1"
-        $store1.GetValue("var2").var3 | should be "val3"
-        $store1.GetValue("list1").length | should be 3
-        $store1.GetValue("list1")[2] | should be "item3"
+        #extract store value to a variable
+        #modify value inside the variable
+        $map = $store1.GetValue()
+        $map.var1 = "val2"
 
-        #load a new store
-        #assert values retrieved from store
-        $store2 = New-Store "config/TestStore1.json"
-        $store2.GetValue("var1") | should be "val1"
-        $store2.GetValue("var2").var3 | should be "val3"
-        $store2.GetValue("list1").length | should be 3
-        $store2.GetValue("list1")[2] | should be "item3"
+        #save the store
+        $store1.Save()
 
-        #edit store
-        #add additional properties
-        $store2.SetValue("newVar1", "newVal1")
+        #assert that the store value has been updated
+        $store2 = New-Store "TestStores/TestStore2.xml"
+        $store2.GetValue().var1 | should be "val2"
+    }
 
-        #can add new property to deserialized object (ie, did not deserialize to an inconvenient type!)
-        $store2.GetValue("var2").var4 = "var4"
-        $store2.SetValue("var2", $store2.GetValue("var2"))
-        $list1 = $store2.GetValue("list1")
-        $list1 += "item4"
-        $store2.SetValue("list1", $list1)
-        
-        #load a new store
-        #assert values retrieved from store
-        $store3 = New-Store "config/TestStore1.json"
-        $store3.GetValue("newVar1") | should be "newVal1"
-        $store3.GetValue("list1").length | should be 4
-        $store3.GetValue("list1")[3] | should be "item4"
+    It "stores a primitive string value" {
+        $store1 = New-Store "TestStores/TestStore4.xml" "line1`nline2" -ForceDefault
+
+        #assert store is created properly
+        $store1.GetValue() | should be "line1`nline2"
+
+        #set value and assert change is made
+        $store1.SetValue("asdfqwer")
+        $store1.GetValue() | should be "asdfqwer"
+
+        #assert value is not committed
+        $store2 = New-Store "TestStores/TestStore4.xml"
+        $store2.GetValue() | should be "line1`nline2"
+
+        #now save the store
+        $store1.Save()
+
+        #load another store
+        #assert value was saved
+        $store3 = New-Store "TestStores/TestStore4.xml"
+        $store3.GetValue() | should be "asdfqwer"
+    }
+
+    It "stores a null value" {
+        #null value is the default default value
+        $store1 = New-Store "TestStores/TestStore5.xml" -ForceDefault
+
+        #assert store is created properly
+        #assert null value is created by default
+        $store1.GetValue() | should be $null
+
+        #set value and assert change is made
+        $store1.SetValue($null)
+        $store1.GetValue() | should be $null
+
+        #now save the store
+        $store1.Save()
+
+        #load another store
+        #assert value was saved
+        $store2 = New-Store "TestStores/TestStore5.xml"
+        $store2.GetValue() | should be $null
     }
 }

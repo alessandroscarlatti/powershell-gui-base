@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 
 #Create a new store with the given file.
 #If the file does not exist, it will be created.
-function New-Store($file, $defaultValue = @{}, [switch] $ForceDefault) {
+function New-Store($file, $defaultValue = $null, [switch] $ForceDefault) {
     $store = New-Module -AsCustomObject -ArgumentList @($file, $defaultValue, $ForceDefault.IsPresent, $script:_id++) -ScriptBlock $_StoreDef
     $store._InitStore()
     return $store
@@ -80,28 +80,24 @@ $_StoreDef = {
         }
     }
 
-    #Get a value from the store
-    function GetValue([string] $key) {
-        try {
-            return $this._store[$key]
-        } catch {
-            _Throw("Store_$id : Error getting value for key: $($key)", $_)
-        }
+    #Get the value from the store
+    function GetValue() {
+        return $this._store
     }
 
     #Set a value in the store
     #By default, this will also commit the store to persistence.
-    function SetValue([string] $key, $value, $commit = $true) {
+    function SetValue($value) {
         try {
-            _Log("Store_$id : Setting value for key: $key value: $value")
-            $this._store[$key] = $value
-
-            if ($commit) {
-                $this._TrySaveStore()
-            }
+            _Log("Store_$id : Setting value for store: $value")
+            $this._store = $value
         } catch {
-            _Throw("Store_$id : Error setting value for key: $($key) value: $($value)", $_)
+            _Throw("Store_$id : Error setting value for store: $($value)", $_)
         }
+    }
+
+    function Save() {
+        $this._TrySaveStore()
     }
 
     #Return whether or not the store exists in persistence.
