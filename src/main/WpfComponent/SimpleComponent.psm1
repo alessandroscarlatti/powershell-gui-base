@@ -50,6 +50,35 @@ Function Mount-Component([ScriptBlock] $ComponentDefScript, $Props, $Context) {
     ConvertTo-Wpf $ComponentDefScript $Props $Context
 }
 
+#Dismount the given WPF component.
+#Only calls the destroy scripts.
+#At this time, we THINK that this should be called BEFORE removing the component from the tree.
+#However, depending on how the logical tree traversal works, this may not be necessary.
+Function Dismount-Component($WpfComponent) {
+
+    Function VisitControl($WpfComponent) {
+        #search for UIElement children
+        _Log("Visiting control: $($WpfComponent.ToString())")
+        if (($WpfComponent -is [System.Windows.UIElement]) -or ($WpfComponent -is [System.Windows.UIElement3D])) {
+            $children = [System.Windows.LogicalTreeHelper]::GetChildren($WpfComponent)
+            foreach($child in $children) {
+                #visit each child
+                VisitControl $child
+            }
+
+            #look for a destroy script
+            if (($WpfComponent.Tag._DestroyScript) -and ($WpfComponent.Tag._DestroyScript -is [ScriptBlock])) {
+                #call the script if it exists
+                _Log "Found destory script for component: $($WpfComponent.ToString()) : $($WpfComponent.Tag.ToString()) : $($WpfComponent.Tag._DestoryScript)"
+                &$WpfComponent.Tag._DestroyScript $WpfComponent.Tag
+            }
+        }
+    }
+
+    #start the recursive process
+    VisitControl $WpfComponent
+}
+
 Function ConvertTo-Wpf([ScriptBlock] $ComponentDefScript, $Props, $Context) {
     $Component = New-SimpleComponent $ComponentDefScript $Props $Context
     $Component.RenderAndInit()
@@ -92,6 +121,7 @@ $_SimpleComponentDef = {
     [xml] $_Xaml = $null;   #the actual xaml used for this component
     [ScriptBlock] $_XamlScript = $null;   #the script to be executed to obtain the pre-realized xaml
     [ScriptBlock] $_InitScript = $null;   #the actual init script to call to initialize the component
+    [ScriptBlock] $_DestroyScript = $null #the actual destroy script to call when unmounting this component
     [String] $_XamlNamePrefix = "_____SimpleComponent_$($_ComponentId)_";       #the prefix for all refs belonging to this component, eg "_SimpleComponent_1_MyButton1"
     [String] $_XamlPlaceholderXpath = "//*[local-name() = '_____SimpleComponent_$($_ComponentId)']"     #the xpath to use to identify this placeholder for this component
     [String] $_XamlPlaceholder = "<_____SimpleComponent_$($_ComponentId)/>";    #the xaml placeholder for this component, eg "<_SomeComponent123 />"
@@ -244,7 +274,7 @@ $_SimpleComponentDef = {
                 _Log "_RealizeXaml: $($this) Creating root node Name attribute"
                 $RootNode = $this._Xaml.SelectSingleNode("/*")
                 $RootNodeNameAttribute = $RootNode.OwnerDocument.CreateAttribute("Name")
-                $RootNodeNameAttribute.Value = ":this"
+                $RootNodeNameAttribute.Value = ":this" #prefix with ":" so that the name will replaced with a unique identifier.
                 $RootNode.Attributes.Append($RootNodeNameAttribute) | out-null
 
                 _Log "_RealizeXaml: $($this) Added root node Name attribute: $($RootNodeNameAttribute.Value)"
@@ -305,6 +335,11 @@ $_SimpleComponentDef = {
             #Load WPF component
             _Log "_RealizeWpf: XAML: $($this._Xaml.OuterXml)"
             $Wpf = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $this._Xaml))
+
+            #Set the tag on the WPF object to be this component
+            #this will allow us to find framework components by the tag on the WPF component
+            #when we traverse the WPF component tree.
+            $Wpf.Tag = $this
 
             #Set WFP component for all child components
             $this.__SetWpfDeep($Wpf)
@@ -434,6 +469,15 @@ $_SimpleComponentDef = {
             $this._InitScript = $InitScript
         } catch {
             _Throw ("Init: Error", $_)
+        }
+    }
+
+    #Assign the script that will be called to clean up this component when it is unmounted
+    function Destroy([ScriptBlock] $DestroyScript) {
+        try {
+            $this._DestroyScript = $DestroyScript
+        } catch {
+            _Throw ("Destroy: Error", $_)
         }
     }
 

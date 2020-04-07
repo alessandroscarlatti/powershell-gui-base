@@ -162,3 +162,59 @@ Describe "WpfComponent" {
         $Window.FindName("stackPanel").Children[0].Tag.var1 | should be "val1"
     }
 }
+
+Describe "Tags" {
+
+    import-module ./SimpleComponent.psm1 -force
+
+    It "calls unsubscribe on any child components" {
+
+        $TestResults = @{
+            panel2Destroyed = $false;
+            button1Destroyed = $false;
+        }
+
+        $__WINDOW__ = { param($this)
+            "<Window $($this.xmlns)><StackPanel Name='stackPanel1'></StackPanel></Window>"
+        }
+
+        $__STACK_PANEL__ = { param($this)
+            $this.Destroy({ param($this)
+                #update the test results when destroy is called
+                write-host "destroying stackPanel2"
+                $this.props.panel2Destroyed = $true
+            })
+            "<StackPanel $($this.xmlns)><StackPanel Name='stackPanel3'></StackPanel></StackPanel>"
+        }
+
+        $__BUTTON__ = { param($this)
+            $this.Destroy({ param($this)
+                #update the test results when destroy is called
+                write-host "destroying button1"
+                $this.props.button1Destroyed = $true
+            })
+            "<Button $($this.xmlns) Name='button1'>asdf</Button>"
+        }
+
+        #build all the components
+        $window = mount-component $__WINDOW__
+        $stackPanel1 = $window.FindName("stackPanel1")
+        $stackPanel2 = mount-component $__STACK_PANEL__ $TestResults
+        $stackPanel3 = $stackPanel2.FindName("stackPanel3")
+        $button1 = mount-component $__BUTTON__ $TestResults
+
+        #add the children into the parents
+        $stackPanel1.Children.Add($stackPanel2)
+        $stackPanel3.Children.Add($button1)
+        
+        #now dismount the wpf component
+        #this should cause all of the Destroy methods to be called
+        #for stackPanel2, and button1,
+        #since they are framework components, even though they are separated with a non-component wpf component between.
+        dismount-component $stackPanel1
+
+        #assert that the destroy scripts were called
+        $TestResults.panel2Destroyed | should be $true
+        $TestResults.button1Destroyed | should be $true
+    }
+}
