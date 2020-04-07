@@ -3,14 +3,14 @@ $ErrorActionPreference = "Stop"
 
 #Create a new store with the given file.
 #If the file does not exist, it will be created.
-function New-Store($file, $defaultValue = $null, [switch] $ForceDefault) {
-    $store = New-Module -AsCustomObject -ArgumentList @($file, $defaultValue, $ForceDefault.IsPresent, $script:_id++) -ScriptBlock $_StoreDef
+function New-Store($file, $defaultValue = $null, $ReducerFunction = $null, [switch] $ForceDefault) {
+    $store = New-Module -AsCustomObject -ArgumentList @($file, $defaultValue, $ReducerFunction, $ForceDefault.IsPresent, $script:_id++) -ScriptBlock $stateDef
     $store._InitStore()
     return $store
 }
 
-$_StoreDef = {
-    param($file, $defaultValue, $ForceDefault, $id = "default")
+$stateDef = {
+    param($file, $defaultValue, $_ReducerFunction, $ForceDefault, $id = "default")
     $ErrorActionPreference = "Stop"
 
     $_ConvertToString = {
@@ -45,7 +45,7 @@ $_StoreDef = {
         }
     }
     
-    $_Store = $null; #the actual object representing the store
+    $state = $null; #the actual object representing the store
     $_SubscriptionIndex = 0; #the index for the next subscription id
     $_Subscribers = @{} #map of all susbcribers, eg subscriber_0 => { ...some code runs on event }
     $file = _ToAbsolutePath($file) #convert file to absolute path
@@ -83,16 +83,16 @@ $_StoreDef = {
     }
 
     #Get the value from the store
-    function GetValue() {
-        return $this._store
+    function GetState() {
+        return $this.state
     }
 
     #Set a value in the store
     #By default, this will also commit the store to persistence.
-    function SetValue($value) {
+    function SetState($value) {
         try {
             _Log("Store_$id : Setting value for store: $value")
-            $this._store = $value
+            $this.state = $value
         } catch {
             _Throw("Store_$id : Error setting value for store: $($value)", $_)
         }
@@ -104,7 +104,19 @@ $_StoreDef = {
 
     #Dispatch an action to the store
     function Dispatch($action) {
+        #transform to the next state
+        if ($this._ReducerFunction) {
+            #there is a reducer function; call it
+            $result = &$this._ReducerFunction $state $action
+
+            if ($result) {
+                #if we returned a value from the reducer function, use it to set the new state
+                $this.store = $result
+            }
+        }
+
         #call the subscribers
+        #now that the next state has been achieved
         _CallSubscribers($action)
     }
 
@@ -136,7 +148,7 @@ $_StoreDef = {
             _Log("Store_$id : call subscriber: $($key)")
             #call the subscriber, passing the store and the action
             try {
-                &$_Subscribers[$subscriberId] $_Store $Action
+                &$_Subscribers[$subscriberId] $state $Action
             } catch {
                 _Throw("Error calling subscriber $($subscriberId)", $_)
             }
@@ -163,9 +175,9 @@ $_StoreDef = {
     function _TryLoadStore() {
         try {
             _Log("Store_$id : Try to read store from file: $file")
-            $this._Store = @{}
+            $this.state = @{}
             $strStore = (get-content -raw $file)
-            $this._Store = &$_ConvertFromString($strStore)
+            $this.state = &$_ConvertFromString($strStore)
         } catch {
             _Throw("Store_$id : Error reading store from file: $file", $_)
         }
@@ -189,7 +201,7 @@ $_StoreDef = {
     function _TrySaveStore() {
         try {
             _Log("Store_$id : Try to save store to file: $file")
-            $_strStore = &$_ConvertToString($_Store)
+            $_strStore = &$_ConvertToString($state)
             _Log("Store_$id : store is: $_strStore")
             set-content $file $_strStore
         } catch {
