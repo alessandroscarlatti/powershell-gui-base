@@ -10,7 +10,7 @@ $this.context.store.subscribe({
     if ($action.type -eq "ADD_TODO") {
         #create a new button
         #and add it to the stack panel
-        $newButton = mount-component $script:__TODO__ @{ text = $action.todo.text } $script:this.context
+        $newButton = mount-component $script:__TODO__ @{ todo = $action.todo } $script:this.context
         $script:this.refs.this.Children.Add($newButton)
 
         #this could ALSO be implemented as a different rendering strategy...
@@ -20,8 +20,8 @@ $this.context.store.subscribe({
 }.GetNewClosure()) | out-null
 
 $todos = @()
-foreach($todo in $this.context.store.state.todos) {
-    $todos += $this | Mount-Child $__TODO__ @{ text = $todo }
+foreach($todo in $this.context.store.state.todos.values) {
+    $todos += $this | Mount-Child $__TODO__ @{ todo = $todo }
 }
 
 @"

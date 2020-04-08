@@ -1,13 +1,12 @@
 param($props)
 
-write-host "add another button."
-
 #build new todo
 $props.context.ButtonId++
 
 $todo = @{
-    id = $props.ButtonId;
+    id = $props.context.ButtonId;
     text = $props.text;
+    status = "TODO"
 }
 
 #dispatch event
