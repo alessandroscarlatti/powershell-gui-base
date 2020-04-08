@@ -164,3 +164,63 @@ Describe "Events" {
         $TestResults.callback2Invoked | should be $true
     }
 }
+
+Describe "Actions" {
+    It "adds action methods" {
+
+        $TestResults = @{
+            action1Invoked = $false
+        }
+
+        $actions = New-Actions
+
+        #add action with scriptblock
+        $actions | Add-Action "Action1" {
+            param($arg0, $TestResults = @{})
+            $arg0 | should be "arg0"
+            $TestResults.action1Invoked = $true
+        }.GetNewClosure()
+
+        #add action with file
+        $actions | Add-Action "ActionScript" "./Test.ActionScript.ps1"
+
+        #invoke actions
+        $actions.Action1("arg0", $TestResults)
+        $actions.ActionScript("actionScriptArg0", $TestResults)
+
+        $TestResults.action1Invoked | should be $true
+        $TestResults.actionScriptArg0 | should be "actionScriptArg0"
+    }
+}
+
+Describe "Execute ScriptBlock with args" {
+    It "call with parentheses" {
+        $TestResult = @{
+            val1 = "asdf"
+        }
+
+        $HashTable1 = @{}
+        $HashTable1.sb = { param($arg)
+            $script:TestResult.val1 = $arg
+        }.GetNewClosure()
+    
+        &($HashTable1.sb)("qwer")
+    
+        $TestResult.val1 | should be "qwer"
+    }
+}
+
+Describe "Execute Script file with args" {
+    It "call file with hashtable first arg" {
+        $TestResult = @{
+            val1 = "asdf"
+        }
+
+        $HashTable1 = @{}
+        $HashTable1.action = "./Test.ActionScript2.ps1"
+    
+        &$HashTable1.action $TestResult "qwer"
+    
+        $TestResult.val1 | should be "qwer"
+    }
+}

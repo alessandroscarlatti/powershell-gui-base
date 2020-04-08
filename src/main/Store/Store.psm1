@@ -9,6 +9,45 @@ function New-Store($file, $defaultValue = $null, $ReducerFunction = $null, [swit
     return $store
 }
 
+function Import-Action($file) {
+    return Get-Command $file | Select-Object -ExpandProperty ScriptBlock
+}
+function New-Actions {
+    return new-object -typename PSCustomObject
+}
+#Add an action, either a script file to invoke or 
+#a scriptblock to invoke
+function Add-Action([string] $name, $script, [parameter(valuefrompipeline=$true)] $actions) {
+    if ($script -is [string]) {
+        #this is expected to be a .ps1 file
+        if (!$name) {
+            #no action name given; use {name}.ps1
+            $name = [io.path]::GetFileNameWithoutExtension($script)
+        }
+
+        #create a method that will call the given script
+        $actions | Add-Member -MemberType ScriptMethod -name $name -Value {
+            $ErrorActionPreference = "Stop"
+            & $script:script @args
+        }.GetNewClosure()
+
+    } elseif($script -is [scriptblock]) {
+        if (!$name) {
+            #validate action name
+            throw new-object Exception ("Error adding action. Name may not be null.")
+        }
+
+        #create a method that will call the given script
+        $actions | Add-Member -MemberType ScriptMethod -name $name -Value {
+            $ErrorActionPreference = "Stop"
+            & $script:script @args
+        }.GetNewClosure()
+    } else {
+        throw new-object Exception ("Error adding action. Invalid script type for script: $($script)")
+    }
+
+}
+
 $stateDef = {
     param($file, $defaultValue, $_ReducerFunction, $ForceDefault, $id = "default")
     $ErrorActionPreference = "Stop"
@@ -115,6 +154,9 @@ $stateDef = {
             }
         }
 
+        #save the state
+        $this._TrySaveStore()
+
         #call the subscribers
         #now that the next state has been achieved
         _CallSubscribers($action)
@@ -214,3 +256,6 @@ $stateDef = {
 }
 
 Export-ModuleMember -Function New-Store
+Export-ModuleMember -Function New-Actions
+Export-ModuleMember -Function Add-Action
+Export-ModuleMember -Function Import-Action

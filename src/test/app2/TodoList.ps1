@@ -4,8 +4,8 @@ import-module "$($this.Context.SrcDir)/main/WpfComponent/SimpleComponent.psm1"
 $__TODO__ = import-component "$($this.context.AppDir)/Todo.ps1"
 
 #subscribe to events
-$this.context._store.subscribe({
-    param($store, $action)
+$this.context.store.subscribe({
+    param($state, $action)
 
     if ($action.type -eq "ADD_TODO") {
         #create a new button
@@ -20,8 +20,8 @@ $this.context._store.subscribe({
 }.GetNewClosure()) | out-null
 
 $todos = @()
-foreach($todo in $this.context.store.todos) {
-    $todos += Mount-Child $__TODO__ $this @{ text = $todo }
+foreach($todo in $this.context.store.state.todos) {
+    $todos += $this | Mount-Child $__TODO__ @{ text = $todo }
 }
 
 @"

@@ -22,7 +22,7 @@ Function Import-Component([string] $scriptFile) {
     }.GetNewClosure()
 }
 
-Function Mount-Child([ScriptBlock] $ComponentDefScript, $ParentComponent, $Props, $Context) {
+Function Mount-Child([ScriptBlock] $ComponentDefScript, $Props, $Context, [parameter(valuefrompipeline=$true)]$ParentComponent) {
     if ($null -eq $Context) {
         $Context = $ParentComponent.Context
     }
@@ -89,6 +89,18 @@ Function ConvertTo-Component([ScriptBlock] $ComponentDefScript, $Props, $Context
     $Component = New-SimpleComponent $ComponentDefScript $Props $Context
     $Component.RenderAndInit()
     return $Component
+}
+
+#Wrap a scriptblock in a try-catch that will swallow the exception
+Function New-SafeScriptBlock($scriptblock) {
+    return {
+        try {
+            Invoke-Command $scriptblock -ArgumentList $args
+        } catch {
+            write-host ($_ | out-host)
+            write-host $_.Exception.GetBaseException().ToString()
+        }
+    }.GetNewClosure()
 }
 
 #Constructor for creating a simple component,

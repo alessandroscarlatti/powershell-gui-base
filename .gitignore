@@ -3,3 +3,5 @@ stuff.txt
 *.backup.json
 store.xml
 TestStores/
+*.iml
+.idea/

@@ -1,5 +1,8 @@
 param($Context)
 
+import-module "$($Context.SrcDir)/main/Store/Store.psm1"
+$AppDir = $Context.AppDir
+
 #define default store
 $DefaultStore = @{
     Todos = @(
@@ -9,7 +12,19 @@ $DefaultStore = @{
     )
 }
 
+#define actions
+$Context.Actions = @{
+    ADD_TODO = Import-Action "$AppDir\actions\ADD_TODO.ps1"
+}
+
+#define state transitions
+$Reducer = {
+    param($state, $action)
+
+    if ($action.type -eq "ADD_TODO") {
+        $state.todos += $action.todo.text
+    }
+}
+
 #Create new store
-import-module "$($Context.SrcDir)/main/Store/Store.psm1"
-$Context._Store = new-store "$($Context.AppDir)\store.xml" $DefaultStore
-$Context.Store = $Context._Store.GetValue()
+$Context.Store = new-store "$AppDir\store.xml" $DefaultStore $Reducer
