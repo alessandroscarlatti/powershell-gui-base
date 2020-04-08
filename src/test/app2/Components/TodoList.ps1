@@ -1,7 +1,7 @@
 param($this)
 
 import-module "$($this.Context.SrcDir)/main/WpfComponent/SimpleComponent.psm1"
-$__TODO__ = import-component "$($this.context.AppDir)/Todo.ps1"
+$__TODO__ = import-component "$($this.context.AppDir)/Components/Todo.ps1"
 
 #subscribe to events
 $this.context.store.subscribe({

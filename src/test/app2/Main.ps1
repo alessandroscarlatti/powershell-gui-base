@@ -8,11 +8,11 @@ try {
     $Context.Name = "app2"
     $Context.ButtonId = 23
 
-    & "$($Context.AppDir)\Store.ps1" ($Context)
+    & "$($Context.AppDir)\State\Store.ps1" ($Context)
 
     #mount WPF
     import-module "$($Context.SrcDir)/main/WpfComponent/SimpleComponent.psm1" -force
-    $__WINDOW__ = Import-Component "$($Context.AppDir)/Window.ps1"
+    $__WINDOW__ = Import-Component "$($Context.AppDir)/Components/Window.ps1"
     
     $Window = Mount-Component $__WINDOW__ @{} $Context
     $Window.ShowDialog()

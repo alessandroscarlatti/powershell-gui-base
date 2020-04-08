@@ -27,4 +27,4 @@ $Reducer = {
 }
 
 #Create new store
-$Context.Store = new-store "$AppDir\store.xml" $DefaultStore $Reducer
+$Context.Store = new-store "$AppDir\state\store.xml" $DefaultStore $Reducer

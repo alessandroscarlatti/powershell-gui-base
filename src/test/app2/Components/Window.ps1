@@ -2,8 +2,8 @@ param($this)
 
 # imports
 import-module "$($this.Context.SrcDir)/main/WpfComponent/SimpleComponent.psm1"
-$__Button1__ = Import-Component "$($this.context.AppDir)/Button1.ps1"
-$__TodoList__ = Import-Component "$($this.context.AppDir)/TodoList.ps1"
+$__Button1__ = Import-Component "$($this.context.AppDir)/Components/Button1.ps1"
+$__TodoList__ = Import-Component "$($this.context.AppDir)/Components/TodoList.ps1"
 
 #Define Behaviors
 
