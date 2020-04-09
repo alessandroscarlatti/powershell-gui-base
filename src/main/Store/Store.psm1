@@ -186,11 +186,25 @@ $stateDef = {
 
     function _CallSubscribers($Action) {
         _Log("Store_$id : call subscribers: $($callback)")
+        $subscriberIds = @()
+
+        #defensive copy the subscriber keys in case a subscriber is 
+        #added or removed during an invocation
         foreach ($subscriberId in $_Subscribers.Keys) {
+            $subscriberIds += $subscriberId
+        }
+
+        #now call each of the subscribers gathered previously
+        #if new subscribers have been added, they are not called.
+        #if subscribers have been removed, they are not called.
+        foreach ($subscriberId in $subscriberIds) {
             _Log("Store_$id : call subscriber: $($key)")
             #call the subscriber, passing the store and the action
             try {
-                &$_Subscribers[$subscriberId] $state $Action
+                if ($_Subscribers[$subscriberId]) {
+                    #the subscriber has not been removed
+                    &$_Subscribers[$subscriberId] $state $Action
+                }
             } catch {
                 _Throw("Error calling subscriber $($subscriberId)", $_)
             }

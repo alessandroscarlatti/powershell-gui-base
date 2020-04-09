@@ -20,8 +20,8 @@ $this.context.store.subscribe({
 }.GetNewClosure()) | out-null
 
 $todos = @()
-foreach($todo in $this.context.store.state.todos.values) {
-    $todos += $this | Mount-Child $__TODO__ @{ todo = $todo }
+foreach($key in $this.context.store.state.todos.keys) {
+    $todos += $this | Mount-Child $__TODO__ @{ todo = $this.context.store.state.todos[$key] }
 }
 
 @"

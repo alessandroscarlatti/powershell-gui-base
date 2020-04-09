@@ -91,14 +91,59 @@ Function ConvertTo-Component([ScriptBlock] $ComponentDefScript, $Props, $Context
     return $Component
 }
 
+#Print stack trace from error record or exception
+function Out-StackTrace([Parameter(Mandatory, ValueFromPipeline)] $_) {
+    process {
+        function _PrintRootCauseException($e) {
+            write-host "caused by $($e.ErrorRecord | out-string)"
+            write-host "$($e.ErrorRecord.ScriptStackTrace)"
+        }
+        function _VisitException($e) {
+            if ($e.InnerException) {
+                #this is not the root exception
+                write-host "caused by $($e.Message)"
+                if ($e.ErrorRecord) {
+                    #print the stacktrace up to this point, if there is one available
+                    write-host $e.ErrorRecord.ScriptStackTrace
+                }
+                _VisitException($e.InnerException)
+            } else {
+                #this is the root exception
+                _PrintRootCauseException($e)
+            }
+        }
+
+        if ($_ -is [Management.Automation.ErrorRecord]) {
+            #this is an error record
+            #so print the error invocation details
+            write-host ($_ | out-string)
+            write-host $_.Exception
+            write-host "at $($_.ScriptStackTrace)"
+            $e = $_.Exception
+        } elseif ($_ -is [Exception]) {
+            #this is an exception
+            $e = $_
+        } else {
+            throw new-object Exception "Unrecognized object type: $($_)"
+        }
+        
+        if ($e.InnerException) {
+            #there is an inner exception so visit it
+            _VisitException($e.InnerException)
+        } else {
+            #there is no inner exception, just print the root cause
+            _PrintRootCauseException($e)
+        }
+    }
+}
 #Wrap a scriptblock in a try-catch that will swallow the exception
 Function New-SafeScriptBlock($scriptblock) {
     return {
         try {
             Invoke-Command $scriptblock -ArgumentList $args
         } catch {
-            write-host ($_ | out-host)
-            write-host $_.Exception.GetBaseException().ToString()
+            write-host "Error executing scriptblock: $($scriptblock | out-string)"
+            write-host $_ | out-stacktrace
         }
     }.GetNewClosure()
 }
@@ -219,6 +264,12 @@ $_SimpleComponentDef = {
 
             if ($result) {
                 _Log "_DefineComponent: $($this) Definition script returned value: $($result) Expecting value to be xaml for this component."
+
+                if ($result -is [array]) {
+                    #use the last item returned in the array
+                    $result = $result[$result.length - 1]
+                }
+
                 if ($result -is [string]) {
                     $this._XamlScript = { $result }.GetNewClosure()
                 } elseif ($result -is [xml]) {

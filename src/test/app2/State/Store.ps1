@@ -16,7 +16,8 @@ $DefaultStore = @{
             text = "todo2";
             status = "TODO";
          }
-    }
+    };
+    TodoId = 3;
 }
 
 #define actions
@@ -29,17 +30,19 @@ $Context.Actions = @{
 $Reducer = {
     param($state, $action)
 
+    #handle ADD_TODO
     if ($action.type -eq "ADD_TODO") {
         $state.todos[$action.todo.id] = $action.todo
         return
     }
 
+    #handle INVERT_TODO_STATUS
     if ($action.type -eq "INVERT_TODO_STATUS") {
         $currentState = $state.todos[$action.todo.id].status
         if ($currentState -eq "DONE") {
-            $state.todos[$action.todo.id].status = "TODO" 
+            $state.todos[$action.todo.id].status = "TODO"
         } else {
-            $state.todos[$action.todo.id].status = "DONE" 
+            $state.todos[$action.todo.id].status = "DONE"
         }
         return
     }

@@ -6,7 +6,6 @@ try {
     $Context.AppDir = Split-Path $script:MyInvocation.MyCommand.Path
     $Context.SrcDir = "$($Context.AppDir)\..\..\..\src"
     $Context.Name = "app2"
-    $Context.ButtonId = 23
 
     & "$($Context.AppDir)\State\Store.ps1" ($Context)
 

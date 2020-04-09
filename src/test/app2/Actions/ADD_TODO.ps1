@@ -1,10 +1,10 @@
 param($props)
 
 #build new todo
-$props.context.ButtonId++
+$props.context.store.state.todoId++
 
 $todo = @{
-    id = $props.context.ButtonId;
+    id = $props.context.store.state.todoId;
     text = $props.text;
     status = "TODO"
 }
