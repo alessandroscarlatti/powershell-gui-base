@@ -11,13 +11,52 @@ $_ComponentIdSeq = 0;
 
 $ErrorActionPreference = "Stop"
 
+#Define the simple data context C# class.
+$SimpleDataContextClassDef = @"
+using System;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
+public class SimpleDataContext : System.Collections.Hashtable, INotifyPropertyChanged {
+
+    public event PropertyChangedEventHandler PropertyChanged;
+
+    public void NotifyPropertyChanged([CallerMemberName] String propertyName = "") {
+        if (PropertyChanged != null)
+        {
+            Console.WriteLine("Firing property changed event for " + propertyName);
+            PropertyChanged(this, new PropertyChangedEventArgs(""));
+        }
+    }
+
+    public override object this[object key] { 
+        get {
+            Console.WriteLine("getting item " + key + " value is " + base[key]);
+            return base[key];
+        }
+        set {
+            Console.WriteLine("setting item " + key + " with value " + value);
+            base[key] = value;
+            NotifyPropertyChanged((string) "[" + key + "]");
+        }
+    }
+}
+"@
+
+#Load the SimpleDataContext class if it is not already loaded.
+try { 
+    [SimpleDataContext] | Out-Null 
+} catch { 
+    Add-Type -TypeDefinition $SimpleDataContextClassDef -Language CSharp 
+}
+
 Function Import-Component([string] $scriptFile) {
     $sb = Get-Command $scriptFile | Select-Object -ExpandProperty ScriptBlock
     return { param($this) 
         try {
             Invoke-Command $sb -ArgumentList $this
         } catch {
-            _Throw ("Error defining component in file $($scriptFile)", $_)
+            _Throw "Error defining component in file $($scriptFile)" $_
         }
     }.GetNewClosure()
 }
@@ -91,6 +130,11 @@ Function ConvertTo-Component([ScriptBlock] $ComponentDefScript, $Props, $Context
     return $Component
 }
 
+#Show the given window as a dialog.
+function Show-Dialog([Parameter(valuefrompipeline = $true)] $Window) {
+    [void]$Window.Dispatcher.InvokeAsync{ $Window.ShowDialog() }.Wait()
+}
+
 #Print stack trace from error record or exception
 function Out-StackTrace([Parameter(Mandatory, ValueFromPipeline)] $_) {
     process {
@@ -148,6 +192,17 @@ Function New-SafeScriptBlock($scriptblock) {
     }.GetNewClosure()
 }
 
+Function New-TryCatchBlock($scriptblock) {
+    return {
+        try {
+            Invoke-Command $scriptblock -ArgumentList $args
+        } catch {
+            write-host "Error executing scriptblock: $($scriptblock | out-string)"
+            write-host $_ | out-stacktrace
+        }
+    }.GetNewClosure()
+}
+
 #Constructor for creating a simple component,
 #whether or not the component is a top-level component or a child component.
 Function New-SimpleComponent([ScriptBlock] $ComponentDefScript, $Props, $Context) {
@@ -168,6 +223,7 @@ $_SimpleComponentDef = {
 
     $ErrorActionPreference = "Stop"
 
+    $Binding = $null;      #WPF binding object for the root element, by default an instance of (SimpleDataContext)
     $Vars = @{};            #vars for custom use
     $Refs = @{};            #map of ref WPF components directly relating to this component, eg MyButton1 => [WPF object]
                             #This map will NOT contain grandchild WPF components.
@@ -214,7 +270,7 @@ $_SimpleComponentDef = {
             _AddComponentAsChild $ChildComponent
             return $ChildComponent._XamlPlaceholder
         } catch {
-            _Throw ("AddChild: Error", $_)
+            _Throw "AddChild: Error" $_
         }
     }
 
@@ -259,7 +315,7 @@ $_SimpleComponentDef = {
             try {
                 $result = Invoke-Command $this._ComponentDefScript -ArgumentList ($this) -EA stop
             } catch {
-                _Throw ("_DefineComponent: Error calling component definition script. Check your component definition script for the root error.", $_)
+                _Throw "_DefineComponent: Error calling component definition script. Check your component definition script for the root error." $_
             }
 
             if ($result) {
@@ -281,7 +337,7 @@ $_SimpleComponentDef = {
 
             _Log "_DefineComponent: $($this) Complete"
         } catch {
-            _Throw ("_DefineComponent: Error", $_)
+            _Throw "_DefineComponent: Error" $_
         }
     }
 
@@ -306,7 +362,7 @@ $_SimpleComponentDef = {
                     try {
                         $this.RenderChild($sb) 
                     } catch {
-                        _Throw ("Error invoking RenderChild script", $_)
+                        _Throw "Error invoking RenderChild script" $_
                     }
                 };
             }
@@ -326,7 +382,7 @@ $_SimpleComponentDef = {
                 $this._Xaml = [xml]$xaml
             }
             else {
-                _Throw ("Unable to construct xaml from object: $($xaml | out-string)", $_)
+                _Throw "Unable to construct xaml from object: $($xaml | out-string)" $_
             }
 
             _Log "_RealizeXaml: Xaml from script: $($this._Xaml.OuterXml)"
@@ -384,7 +440,7 @@ $_SimpleComponentDef = {
 
             _Log "_RealizeXaml: $($this) Complete"
         } catch {
-            _Throw ("_RealizeXaml: Error", $_)
+            _Throw "_RealizeXaml: Error" $_
         }
     }
 
@@ -411,7 +467,7 @@ $_SimpleComponentDef = {
 
             _Log "_RealizeWpf: $($this) Complete"
         } catch {
-            _throw ("_RealizeWpf: Error realizing WPF for component $($this)", $_)
+            _throw "_RealizeWpf: Error realizing WPF for component $($this)" $_
         }
     }
 
@@ -469,7 +525,7 @@ $_SimpleComponentDef = {
             _Log "__InitRefs: $($this) Refs: $($this.Refs | out-string)"
             _Log "__InitRefs: $($this) Complete"
         } catch {
-            _Throw ("__InitRefs: Error", $_)
+            _Throw "__InitRefs: Error" $_
         }
     }
 
@@ -491,7 +547,7 @@ $_SimpleComponentDef = {
             $targetNode.ParentNode.InsertAfter($newNode, $targetNode) | out-null
             $targetNode.ParentNode.RemoveChild($targetNode) | out-null
         } catch {
-            _Throw ("_ReplaceXmlNode: Error replacing xml node", $_)
+            _Throw "_ReplaceXmlNode: Error replacing xml node" $_
         }
     }
 
@@ -504,6 +560,11 @@ $_SimpleComponentDef = {
     function _InitDeep() {
         try {
             _Log "_InitDeep: $($this)"
+            
+            #initialize bindings
+            $this._InitBinding()
+
+            #call init script, if present
             if ($this._InitScript) {
                 _Log "_InitDeep: $($this) Calling init function: $($this._InitScript)"
                 $refs = $this.refs
@@ -515,8 +576,16 @@ $_SimpleComponentDef = {
                 $this._Children[$_]._InitDeep()
             }
         } catch {
-            _Throw ("_InitDeep: $($this) Error calling init function, Check your Init function for the following error: $($_.Exception.Message)", $_)
+            _Throw "_InitDeep: $($this) Error calling init function, Check your Init function for the following error: $($_.Exception.Message)" $_
         }
+    }
+
+    #Initialize an empty bindings object for this component.
+    #Assumes that this.refs has been populated.
+    #Binds the data context to the this WPF component.
+    function _InitBinding() {
+        $this.Binding = new-object SimpleDataContext
+        $this.refs.this.DataContext = $this.Binding
     }
 
     #Assign the script that will be called to generate xaml.
@@ -524,7 +593,7 @@ $_SimpleComponentDef = {
         try {
             $this._XamlScript = $XamlScript
         } catch {
-            _Throw ("Xaml: Error", $_)
+            _Throw "Xaml: Error" $_
         }
     }
 
@@ -533,7 +602,7 @@ $_SimpleComponentDef = {
         try {
             $this._InitScript = $InitScript
         } catch {
-            _Throw ("Init: Error", $_)
+            _Throw "Init: Error" $_
         }
     }
 
@@ -542,7 +611,7 @@ $_SimpleComponentDef = {
         try {
             $this._DestroyScript = $DestroyScript
         } catch {
-            _Throw ("Destroy: Error", $_)
+            _Throw "Destroy: Error" $_
         }
     }
 

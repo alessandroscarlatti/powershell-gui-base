@@ -7,22 +7,34 @@ $ErrorActionPreference = "Stop"
 $__WINDOW__ = {
     param($this)
 
+    # $this.Binding{
+    #     param($this)
+    #     $this.binding.MyCount = $this.store.MyCount
+    # }
+
     $this.Init{
         param($this)
 
-        $this.refs.txtCount.DataContext = $this.props.DataContext
+        $this.vars.binding = [CustomHashtable] (New-Object CustomHashtable)
+        $this.vars.binding.MyCount = $props.store.MyCount
+        $this.vars.binding.IncrementMe = {
+            param($sender, $args)
+            write-host "asdf"
+        }
 
-        $this.refs.btnIncrement.Add_Click((New-SafeScriptBlock {
-                write-host "count is $($script:this.props.DataContext.MyCount)"
-                ([int] $script:this.props.DataContext.MyCount)++
-        }.GetNewClosure()))
+        $this.refs.this.DataContext = $this.vars.binding
+
+        # $this.refs.btnIncrement.Add_Click((New-SafeScriptBlock {
+        #             write-host "count is $($script:this.vars.binding.MyCount)"
+        #             ([int] $script:this.vars.binding.MyCount)++
+        #         }.GetNewClosure()))
     }
 
-@"
+    @"
     <Window $($this.xmlns)>
         <StackPanel>
             <TextBox Name=":txtCount" Text="{Binding [MyCount]}"></TextBox>
-            <Button Name=":btnIncrement">Increment Me</Button>
+            <Button Name=":btnIncrement" Click="IncrementMe">Increment Me</Button>
         </StackPanel>
     </Window>
 "@
@@ -32,14 +44,14 @@ $__WINDOW__ = {
 $store = @{
     MyCount = 10
 }
- 
-# Create a datacontext for the textbox and set it
-[CustomHashtable] $DataContext = New-Object CustomHashtable
 
-$DataContext.MyCount = [int] 10
-
-$Hash = @{}
-$Hash.Window = Mount-Component $__WINDOW__ @{ DataContext = $DataContext}
+$Hash = @{ }
+try {
+    $Hash.Window = Mount-Component $__WINDOW__ @{ store = $store }
+} catch {
+    $_ | Out-StackTrace
+    throw $_.Exception
+}
  
 # Show the window
-[void]$Hash.Window.Dispatcher.InvokeAsync{$Hash.Window.ShowDialog()}.Wait()
+[void]$Hash.Window.Dispatcher.InvokeAsync{ $Hash.Window.ShowDialog() }.Wait()
