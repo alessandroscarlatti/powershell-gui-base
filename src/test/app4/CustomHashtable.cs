@@ -6,6 +6,21 @@ public class CustomHashtable : System.Collections.Hashtable, INotifyPropertyChan
 
     public event PropertyChangedEventHandler PropertyChanged;
 
+    public delegate void UpdateDependentProperties();
+
+    private UpdateDependentProperties _UpdateDependentProperties;
+
+    public void SetUpdateDependentProperties(CustomHashtable.UpdateDependentProperties callback) {
+        Console.WriteLine("asdf");
+        this._UpdateDependentProperties = callback;
+    }
+
+    public void InvokeUpdateDependentProperties() {
+        if (this.method != null) {
+            method.Invoke(null);
+        }
+    }
+
     public void NotifyPropertyChanged([CallerMemberName] String propertyName = "") {
         if (PropertyChanged != null)
         {
@@ -23,6 +38,8 @@ public class CustomHashtable : System.Collections.Hashtable, INotifyPropertyChan
             Console.WriteLine("setting item " + key + " with value " + value);
             base[key] = value;
             NotifyPropertyChanged((string) "[" + key + "]");
+
+            // Delegate d = (Delegate) base["UpdateDependentProperties"];
         }
     }
 }

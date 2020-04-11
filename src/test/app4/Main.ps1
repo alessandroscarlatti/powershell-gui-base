@@ -21,7 +21,13 @@ Describe "custom hashtable" {
                 var1 = "customVal1"
             }
 
+            $hashtable.SetUpdateDependentProperties({
+                write-host "update"
+            })
+
             $hashtable.var3.var1 | should be "customVal1"
+
+            $hashtable.InvokeUpdateDependentProperties()
         } catch {
             write-host $_
             throw $_.Exception

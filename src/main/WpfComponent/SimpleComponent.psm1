@@ -21,6 +21,30 @@ public class SimpleDataContext : System.Collections.Hashtable, INotifyPropertyCh
 
     public event PropertyChangedEventHandler PropertyChanged;
 
+    public delegate void UpdateDependentProperties(object component);
+
+    private UpdateDependentProperties _UpdateDependentProperties;
+    private bool _updatingDependentProperties = false;
+    private object _component;
+
+    public SimpleDataContext(object component) {
+        _component = component;
+    }
+
+    public void Derive(SimpleDataContext.UpdateDependentProperties callback) {
+        Console.WriteLine("asdf");
+        _UpdateDependentProperties = callback;
+        InvokeUpdateDependentProperties();
+    }
+
+    public void InvokeUpdateDependentProperties() {
+        if (_UpdateDependentProperties != null) {
+            _updatingDependentProperties = true;
+            _UpdateDependentProperties.Invoke(_component);
+            _updatingDependentProperties = false;
+        }
+    }
+
     public void NotifyPropertyChanged([CallerMemberName] String propertyName = "") {
         if (PropertyChanged != null)
         {
@@ -29,7 +53,7 @@ public class SimpleDataContext : System.Collections.Hashtable, INotifyPropertyCh
         }
     }
 
-    public override object this[object key] { 
+    public override object this[object key] {
         get {
             Console.WriteLine("getting item " + key + " value is " + base[key]);
             return base[key];
@@ -38,6 +62,9 @@ public class SimpleDataContext : System.Collections.Hashtable, INotifyPropertyCh
             Console.WriteLine("setting item " + key + " with value " + value);
             base[key] = value;
             NotifyPropertyChanged((string) "[" + key + "]");
+            if (!_updatingDependentProperties) {
+                InvokeUpdateDependentProperties();
+            }
         }
     }
 }
@@ -584,7 +611,7 @@ $_SimpleComponentDef = {
     #Assumes that this.refs has been populated.
     #Binds the data context to the this WPF component.
     function _InitBinding() {
-        $this.Binding = new-object SimpleDataContext
+        $this.Binding = new-object SimpleDataContext ($this)
         $this.refs.this.DataContext = $this.Binding
     }
 
