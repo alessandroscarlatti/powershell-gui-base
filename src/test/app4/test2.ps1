@@ -1,4 +1,7 @@
 import-module "../../main/WpfComponent/SimpleComponent.psm1" -force
+try { [CustomHashtable] | Out-Null } catch { Add-Type -TypeDefinition (get-content -raw "./CustomHashtable.cs") -Language CSharp }
+
+$ErrorActionPreference = "Stop"
 
 function Create-WPFWindow {
     Param($Hash)
@@ -40,23 +43,44 @@ function Create-WPFWindow {
 # Create a WPF window and add it to a Hash table
 $Hash = @{}
 Create-WPFWindow $Hash
+
+$DataContext = $null
  
 # Create a datacontext for the textbox and set it
-$DataContext = New-Object System.Collections.ObjectModel.ObservableCollection[Object]
-$Text = [int]0
-$DataContext.Add($Text)
+[CustomHashtable] $DataContext = New-Object CustomHashtable
+
+# $DataContext = @{}
+
+# $DataContext | Add-Member -Name _MyCount -MemberType NoteProperty -Value 10
+
+# $DataContext | Add-Member -Name MyCount -MemberType ScriptProperty -Value {
+#     # This is the getter
+#     return $this._MyCount
+# } -SecondValue {
+#     param($value)
+#     # This is the setter
+#     $this._MyCount = $value
+# }
+
+$DataContext.MyCount = [int] 10
+# $DataContext = New-Object PSCustomObject -property @{
+#     Count = [int] 10
+# }
+
 $hash.TextBox.DataContext = $DataContext
  
 # Create and set a binding on the textbox object
 $Binding = New-Object System.Windows.Data.Binding # -ArgumentList "[0]"
-$Binding.Path = "[0]"
-$Binding.Mode = [System.Windows.Data.BindingMode]::OneWay
+$Binding.Path = "[MyCount]"
+$Binding.Mode = [System.Windows.Data.BindingMode]::TwoWay
+# $Binding.UpdateSourceTrigger = "PropertyChanged"
 [void][System.Windows.Data.BindingOperations]::SetBinding($Hash.TextBox,[System.Windows.Controls.TextBox]::TextProperty, $Binding)
  
 # Add an event for the button click
 $Hash.Button.Add_Click{
-    $DataContext[0] ++
-} 
+    write-host "count is $($DataContext.MyCount)"
+    ([int] $DataContext.MyCount) ++
+}
  
 # Show the window
 [void]$Hash.Window.Dispatcher.InvokeAsync{$Hash.Window.ShowDialog()}.Wait()
