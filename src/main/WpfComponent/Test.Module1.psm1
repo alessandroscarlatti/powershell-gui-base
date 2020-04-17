@@ -17,3 +17,11 @@ Function New-TestObject1() {
 Function Get-String() {
     return "Hello World"
 }
+
+Function New-TestObservableList {
+    [System.Collections.ObjectModel.ObservableCollection[string]] $list = New-Object System.Collections.ObjectModel.ObservableCollection[string]
+    $list.Add_CollectionChanged({ param($sender, $e)
+        write-host "CollectionChanged on test observable list"
+    })
+    return ,$list
+}

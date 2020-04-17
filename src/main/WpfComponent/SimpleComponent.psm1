@@ -77,6 +77,62 @@ try {
     Add-Type -TypeDefinition $SimpleDataContextClassDef -Language CSharp 
 }
 
+#params.Items = the initial items in this list
+#params.Target = the list to synchronize with
+#params.Map = the function to use to generate the object to be inserted into the other list
+Function New-SyncList {
+    [OutputType([System.Collections.ObjectModel.ObservableCollection[object]])]
+    param($params)
+    [System.Collections.ObjectModel.ObservableCollection[object]] $list = New-ObservableList @{
+        #initialize the list with params.Items
+        Items = $params.Items;
+
+        #add the new item to params.Target
+        #uses params.Map
+        Add = {
+            param($sender, $e)
+            $mappedItem = &$script:params.Map $e.NewItems[0]
+            $script:params.Target.Insert($e.NewStartingIndex, $mappedItem)
+        }.GetNewClosure();
+
+        #remove the item from params.Target
+        Remove = {
+            param($sender, $e)
+            $script:params.Target.RemoveAt($e.OldStartingIndex)
+        }.GetNewClosure()
+    }
+    return ,$list
+}
+
+#params.Items = the initial items in this list
+#params.Add = scriptblock to execute on the CollectionChanged event when an item is added
+#params.Remove = scriptblock to execute on the CollectionChanged even when an item is removed
+Function New-ObservableList {
+    [OutputType([System.Collections.ObjectModel.ObservableCollection[object]])]
+    param($params)
+    #build an empty observable list
+    [System.Collections.ObjectModel.ObservableCollection[object]] $list = New-Object System.Collections.ObjectModel.ObservableCollection[object]
+    
+    #set up events
+    #new list will now call the Add and Remove scriptblocks, if given
+    $list.Add_CollectionChanged({
+        param($sender, $e)
+        if (($e.Action -eq "Add") -and ($script:params.Add)) {
+            &$script:params.Add $sender $e
+        }
+        elseif (($e.Action -eq "Remove") -and ($script:params.Remove)) {
+            &$script:params.Remove $sender $e
+        }
+    }.GetNewClosure())
+
+    #initialize the list by adding any initial given items to the list
+    foreach($item in $params.Items) {
+        $list.Add($item)
+    }
+
+    return ,$list
+}
+
 Function Import-Component([string] $scriptFile) {
     $sb = Get-Command $scriptFile | Select-Object -ExpandProperty ScriptBlock
     return { param($this) 

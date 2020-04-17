@@ -1,5 +1,5 @@
-import-module ./SimpleComponent.psm1
-import-module ./Test.Module1.psm1
+import-module ./SimpleComponent.psm1 -force
+import-module ./Test.Module1.psm1 -force
 
 #Set-PSDebug -trace 1
 
@@ -216,5 +216,43 @@ Describe "Tags" {
         #assert that the destroy scripts were called
         $TestResults.panel2Destroyed | should be $true
         $TestResults.button1Destroyed | should be $true
+    }
+}
+
+Describe "ObservableList" {
+    It "Returns modifiable list" {
+
+        $TestResults = @{
+            CallbackCalled = $false
+        }
+
+        $target = New-Object System.Collections.ArrayList
+        # [System.Collections.ObjectModel.ObservableCollection[object]] 
+        [System.Collections.ObjectModel.ObservableCollection[object]] $list = New-SyncList @{
+            Items = @("asdf", "qwer");
+            Target = $target;
+            Map = {param($item) "item: $($item)" }
+        }
+
+        # $list = New-TestObservableList
+
+        # $list.Add("qwer")
+        # $list.Add("zxcv")
+
+        $list.Count | should be 2
+        $target.Count | should be 2
+
+        # $handler = {
+        #     write-host "asdf"
+        # }
+
+        # $list.Add_CollectionChanged($handler)
+
+        # $handler = $null;
+
+        #try to add an item
+        $list.Add("zxcv")
+        $list.Count | should be 3
+        $target.count | should be 3
     }
 }
