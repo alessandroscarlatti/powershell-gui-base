@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 import-module "../../main/WpfComponent/SimpleComponent.psm1" -force
 
-$__TODO__ = {
+$__TODO__ = { 
     param($this)
     $this.Init{ param($this)
         $this.refs.this.Add_Click({
@@ -17,10 +17,13 @@ $__WINDOW__ = {
     $this.Init{
         param($this)
 
+        #set up bindings
         $this.binding.MyCount = $this.props.store.MyCount
         $this.binding.MyObject = @{
             Var1 = [int] 19
         }
+
+        #bind list of buttons
         $this.binding.ListItems = new-synclist @{
             Items = $this.props.store.ListItems;
             Target = $this.refs.itemsControl.Items;
@@ -30,12 +33,13 @@ $__WINDOW__ = {
             }.GetNewClosure()
         }
 
+        #derived bindings
         $this.binding.Derive{
             param($this)
             $this.binding.MyCountPlusOne = $this.binding.MyCount + 1
         }
 
-        #define events
+        #add todo
         $this.refs.btnIncrement.Add_Click((New-TryCatchBlock {
             ([int] $script:this.binding.MyObject.Var1)++
             ([int] $script:this.binding.MyCount)++
@@ -49,6 +53,7 @@ $__WINDOW__ = {
             # $store.MyCount = $script:this.binding.MyCount
         }.GetNewClosure()))
 
+        #remove todo
         $this.refs.btnDecrement.Add_Click((New-TryCatchBlock {
             ([int] $script:this.binding.MyObject.Var1)--
             ([int] $script:this.binding.MyCount)--
