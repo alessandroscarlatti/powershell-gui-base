@@ -3,11 +3,17 @@ import-module "../../main/WpfComponent/SimpleComponent.psm1" -force
 
 $__TODO__ = { 
     param($this)
+
     $this.Init{ param($this)
         $this.refs.this.Add_Click({
             write-host "clicked $($script:this.props.item.text)"
         }.GetNewClosure())
     }
+
+    $this.Destroy({ param($this)
+        write-host "destroying TODO $($this.props.item.text)"
+    })
+
     "<Button $($this.xmlns)>$($this.props.item.text)</Button>"
 }
 

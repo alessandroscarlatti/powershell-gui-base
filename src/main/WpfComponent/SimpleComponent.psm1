@@ -98,9 +98,16 @@ Function New-SyncList {
         #remove the item from params.Target
         Remove = {
             param($sender, $e)
+
+            #call destroy scripts on the item from target list, if possible
+            #this only has an effect if the item is a WPF component
+            Dismount-Component $script:params.Target[$e.OldStartingIndex]
+
+            #actually remove the item from the target list
             $script:params.Target.RemoveAt($e.OldStartingIndex)
         }.GetNewClosure()
     }
+
     return ,$list
 }
 
